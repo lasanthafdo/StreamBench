@@ -62,7 +62,7 @@ pipeline_config config = {
 		.target_tput = (800 * 1000),
 		.record_size = 1000,
 		.input_file = 
-"/home/george/Desktop/testcrap/data_test/Data.txt"
+"/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt"
         ,
 		.cores = 8,//std::thread::hardware_concurrency() - 1,
 };
@@ -72,16 +72,16 @@ pipeline_config config = {
         .target_tput = (2 * 1 * 135 * 10 * 1000),
         .record_size = 136,
         .input_file = 
-"/home/george/Desktop/testcrap/data_test/Data.txt"
+"/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt"
         ,
-        .cores = 1,//std::thread::hardware_concurrency() - 1,
+        .cores = 8,//std::thread::hardware_concurrency() - 1,
 };
 #endif
 
 void testYahooBenchmark()
 {
 
-    config.cores = 2;
+    config.cores = 8;
 
     using namespace boost::uuids;
     using KVPair = pair<creek::string, creek::string>;
@@ -95,7 +95,7 @@ void testYahooBenchmark()
     //boost::uuids::string_generator parse_uuid;
 
     std::ifstream infile(
-"/home/george/Desktop/testcrap/data_test/CampAds.txt"
+"/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/CampAds.txt"
         );
     std::string line;
     vector<string> myString;
