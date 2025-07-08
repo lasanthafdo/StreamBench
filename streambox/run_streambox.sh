@@ -6,13 +6,40 @@ PATH_TO_SB=$PATH_TO_PARENT/streambox
 
 CMD_ARGS=$1
 
-# echo "Downloading StreamBox..."
-# wget ftp://ftp.ecn.purdue.edu/xzl/software/streambox/streambox-last.tar.gz
-if [[ $CMD_ARGS == *"ecp"* ]]; then
-	tar -xvzf streambox-last.tar.gz 
+if [[ $CMD_ARGS == *"deps"* ]]; then
+	echo "Installing Dependencies..."
+	sudo apt-get install \
+		g++ \
+	     	libtbb-dev \
+     		automake \
+		autoconf \
+		autoconf-archive \
+		libtool \
+		libboost-all-dev \
+		libevent-dev \
+		libdouble-conversion-dev \
+		libgoogle-glog-dev \
+		libgflags-dev \
+		liblz4-dev \
+		liblzma-dev \
+		libsnappy-dev \
+		make \
+		zlib1g-dev \
+		binutils-dev \
+		libjemalloc-dev \
+		libssl-dev;
 fi
 
-# tar -xvzf data.tar.gz
+if [[ $CMD_ARGS == *"decp"* ]]; then
+	echo "Downloading StreamBox..."
+	wget ftp://ftp.ecn.purdue.edu/xzl/software/streambox/streambox-last.tar.gz
+fi
+
+if [[ $CMD_ARGS == *"ecp"* ]]; then
+	tar -xvzf streambox-last.tar.gz 
+	ln -s /hdd1/enjima/tests/lsds-streambench/oneTBB/ $PATH_TO_PARENT/tbb
+	# tar -xvzf data.tar.gz
+fi
 
 if [[ $CMD_ARGS == *"cp"* ]]; then
 	echo "Copying new Files..."
@@ -44,31 +71,7 @@ if [[ $CMD_ARGS == *"cp"* ]]; then
 	sleep 2
 fi
 
-if [[ $CMD_ARGS == *"deps"* ]]; then
-	ln -s /hdd1/enjima/tests/lsds-streambench/oneTBB/ $PATH_TO_PARENT/tbb
-
-	echo "Installing Dependencies..."
-	sudo apt-get install \
-		g++ \
-	     	libtbb-dev \
-     		automake \
-		autoconf \
-		autoconf-archive \
-		libtool \
-		libboost-all-dev \
-		libevent-dev \
-		libdouble-conversion-dev \
-		libgoogle-glog-dev \
-		libgflags-dev \
-		liblz4-dev \
-		liblzma-dev \
-		libsnappy-dev \
-		make \
-		zlib1g-dev \
-		binutils-dev \
-		libjemalloc-dev \
-		libssl-dev;
-
+if [[ $CMD_ARGS == *"cmake"* ]]; then
 	echo "Running CMAKE configuration..."
 	cd $PATH_TO_SB
 	/usr/bin/cmake -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - Unix Makefiles" $PATH_TO_SB
@@ -79,6 +82,7 @@ fi
 
 if [[ $CMD_ARGS == *"build"* ]]; then
 	echo "Compiling benchmark..."
+	cd $PATH_TO_SB
 	cmake --build . -j 12 --target test-yahoo.bin
 	echo "Finished compilation."
 	echo
