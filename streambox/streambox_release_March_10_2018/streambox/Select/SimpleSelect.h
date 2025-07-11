@@ -1,6 +1,8 @@
 #ifndef SIMPLESELECT_H
 #define SIMPLESELECT_H
 
+#include "Select.h"
+
 // the "filtering" transform
 template <typename InputT>
 class SimpleSelect : public Select<InputT> {

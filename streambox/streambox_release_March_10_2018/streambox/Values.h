@@ -23,6 +23,9 @@
 #include "core/Pipeline.h"
 #include "WindowingStrategy.h"
 #include "log.h"
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 using namespace std;
 
@@ -144,6 +147,7 @@ struct BundleBase {
 			}
 
 			last = e.ts;
+            cout << to_simple_string(e.ts) << endl;
 		}
 		cout << "dump markers: >>>>>>>>>>>>>>>>>>>>>>>>>>>>";
 		cout << "total " << (last - first).total_milliseconds() << " ms" << endl;
@@ -2166,6 +2170,21 @@ struct RecordBitmapBundle : public RecordBundle<T>
 				long rtt;
 			};
 
+			struct Event {
+				//long timeStamp;
+				//boost::posix_time::ptime timestamp;
+				//boost::uuids::uuid user_id;
+				//boost::uuids::uuid page_id;
+				//boost::uuids::uuid ad_id;
+				creek::string user_id;
+				creek::string page_id;
+				creek::string ad_id;
+				creek::string ad_type;
+				//std::string event_type;
+				int num_event_type;
+				//boost::asio::ip::address ip;
+				int ip;
+			};
 			/////////////////////////////////////////////////////////
 
 			/* an array of set for fixing the scalability bottleneck in a single set.

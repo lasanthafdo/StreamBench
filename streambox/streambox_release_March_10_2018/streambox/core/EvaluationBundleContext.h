@@ -238,6 +238,15 @@ class EvaluationBundleContext {
 			bool isPop;
 			bool has_work;
 
+			cpu_set_t cpuset;
+			CPU_ZERO(&cpuset);
+			int cpu_core = (2 * id) %20;
+			CPU_SET(cpu_core + 1, &cpuset);
+			pthread_t current_thread = pthread_self();
+			pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+            std::cout << "Worker Thread #" << id << ": on CPU " << sched_getcpu() << "\n";
+
+
 			while (true) {
 				/* XXX check a global work counter? XXX */
 
@@ -258,6 +267,8 @@ class EvaluationBundleContext {
 							}
 							has_work = true;
 					}
+
+					//std::cout << "Thread #" << id << ": on CPU " << sched_getcpu() << "\n";
 
 					/* no task right now, consume one bundle/punc before checking tasks
 					 * again. */
@@ -288,6 +299,7 @@ class EvaluationBundleContext {
 				VV("th %d: no work to do. wait...", id);
 //				EE("th %d: no work to do. wait...", id);
 				{
+                    //printf("th %d: gamietai h mana tou. wait... \n", id);
 					std::unique_lock<mutex> lck(exec->cv_mtx_);
 					exec->nwait_ ++;
 //					cv_.wait(lck, [] {

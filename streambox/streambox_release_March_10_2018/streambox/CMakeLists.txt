@@ -11,7 +11,7 @@ include_directories(
         ../CTPL
         ../Kaskade
 	../tbb/include
-        /ssd/local/include
+        /usr/local/include
 )
 
 # in case of use on arm cross toolchain
@@ -69,6 +69,8 @@ SET(HEADERS
         Win/GlobalWindow.h
         Mapper/GrepMapper.h
         Mapper/GrepMapperEvaluator.h
+        Mapper/YahooMapper.h
+        Mapper/YahooMapperEvaluator.h
         Join/Join.h
         Join/JoinEvaluator.h
         Join/JoinEvaluator1.h
@@ -112,6 +114,8 @@ SET(HEADERS
         core/Transforms-multi.h
         core/Transforms.h
         Source/Unbounded-tweets.h
+        Source/YahooBenchmarkSource.h
+        Source/YahooBenchmarkSourceEvaluator.h
         Source/Unbounded.h
         Source/UnboundedInMemEvaluator.h
         Source/UnboundedInMemEvaluatorBase.h
@@ -184,6 +188,7 @@ SET(SOURCES
         Win/WinGBK.cpp
         Mapper/GrepMapper.cpp
         Mapper/WindowedGrepMapper.cpp
+        Mapper/YahooMapper.cpp
         Sink/Sink.cpp
         Sink/WindowsBundleSink.cpp
         LookAheadPipelineVisitor.cpp
@@ -208,7 +213,7 @@ SET(SOURCES
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include config.h -fdiagnostics-color=auto")
 
 SET(CMAKE_CXX_FLAGS_DEBUG
-        "${CMAKE_CXX_FLAGS_DEBUG} -std=c++11 -g -O0 -Wall -DHAVE_NUMA -Wfatal-errors")
+        "${CMAKE_CXX_FLAGS_DEBUG} -std=c++11 -g -O3 -Wall -DHAVE_NUMA -Wfatal-errors")
 
 #SET( CMAKE_CXX_FLAGS_RELEASE  "${CMAKE_CXX_FLAGS_RELEASE} -std=c++11 -g -fcilkplus -Wall -O2" )
 SET(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -g -Wall -O2 -DHAVE_NUMA")
@@ -288,6 +293,14 @@ add_executable(networklatency.bin
 
 add_executable(test-wc.bin
         test/test-wc.cpp
+        )
+
+add_executable(test-yahoo.bin
+        test/test-yahoo.cpp
+        Source/YahooBenchmarkSource.cpp
+        Mapper/YahooMapper.cpp
+        Sink/RecordBundleSink.cpp
+        Sink/WindowsBundleSink.cpp
         )
 
 #add_executable(test-wc.bin
@@ -370,12 +383,12 @@ set_target_properties(test-tweet.bin
 
 # xzl: tbb will be in the default lib path
 #FIND_LIBRARY(tbb NAMES libtbb.so)
-FIND_LIBRARY(tbb NAMES libtbb.so PATHS tbb/lib/intel64/gcc4.7)
+FIND_LIBRARY(tbb NAMES libtbb.so PATHS ../tbb/build/linux_intel64_gcc_cc7_libc2.39_kernel6.11.0_release)
 #FIND_LIBRARY(tbb_malloc NAMES libtbbmalloc.so PATHS tbb/lib/intel64/gcc4.7)
 
 # x86 libs
 if(NOT CMAKE_ENV STREQUAL "arm")
-FIND_LIBRARY(folly NAMES libfolly.a PATHS /ssd/local/lib)
+FIND_LIBRARY(folly NAMES libfolly.a PATHS /usr/local/lib)
 FIND_LIBRARY(re2 NAMES libre2.a PATHS /usr/local/lib)
 FIND_LIBRARY(glog NAMES libglog.a PATHS /usr/local/lib)
 FIND_LIBRARY(re2 NAMES libre2.a PATHS /usr/local/lib)
@@ -393,7 +406,7 @@ TARGET_LINK_LIBRARIES(test-join-2.bin
         boost_program_options
         numa ${tbb}
         ${folly}
-       ${re2}
+        ${re2}
         pcre
         )
 
@@ -429,6 +442,23 @@ TARGET_LINK_LIBRARIES(test-wc.bin
         boost_program_options
         numa 
 	${tbb}
+        #jemalloc -- do we have this for ARM?
+        #  ${tbb_malloc}
+        ${folly}
+        ${re2}
+        pcre
+        )
+
+TARGET_LINK_LIBRARIES(test-yahoo.bin
+        creek
+        boost_date_time
+        boost_system
+        boost_thread
+        boost_program_options
+        boost_regex
+        boost_iostreams
+        numa
+        ${tbb}
         #jemalloc -- do we have this for ARM?
         #  ${tbb_malloc}
         ${folly}

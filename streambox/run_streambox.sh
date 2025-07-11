@@ -3,6 +3,8 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PATH_TO_PARENT=$DIR/streambox_release_March_10_2018
 PATH_TO_SB=$PATH_TO_PARENT/streambox
+TBB_INSTALL_PATH=/hdd1/enjima/tests/lsds-streambench/oneTBB
+TBB_SYMLINK_PATH=$PATH_TO_PARENT/tbb
 
 CMD_ARGS=$1
 
@@ -37,8 +39,11 @@ fi
 
 if [[ $CMD_ARGS == *"ecp"* ]]; then
 	tar -xvzf streambox-last.tar.gz 
-	ln -s /hdd1/enjima/tests/lsds-streambench/oneTBB/ $PATH_TO_PARENT/tbb
 	# tar -xvzf data.tar.gz
+fi
+
+if [ ! -L "$TBB_SYMLINK_PATH" ]; then
+  ln -s  $TBB_INSTALL_PATH "$TBB_SYMLINK_PATH"
 fi
 
 if [[ $CMD_ARGS == *"cp"* ]]; then
@@ -73,7 +78,7 @@ fi
 
 if [[ $CMD_ARGS == *"cmake"* ]]; then
 	echo "Running CMAKE configuration..."
-	cd $PATH_TO_SB
+	cd "$PATH_TO_SB" || exit 1
 	/usr/bin/cmake -DCMAKE_BUILD_TYPE=Release -G "CodeBlocks - Unix Makefiles" $PATH_TO_SB
 	# make test-yahoo.bin
 	echo
@@ -82,7 +87,7 @@ fi
 
 if [[ $CMD_ARGS == *"build"* ]]; then
 	echo "Compiling benchmark..."
-	cd $PATH_TO_SB
+	cd "$PATH_TO_SB" || exit 1
 	cmake --build . -j 12 --target test-yahoo.bin
 	echo "Finished compilation."
 	echo
@@ -90,5 +95,5 @@ if [[ $CMD_ARGS == *"build"* ]]; then
 fi
 
 echo "Running benchmark..."
-cd $PATH_TO_SB/
+cd "$PATH_TO_SB" || exit 1
 ./test-yahoo.bin
