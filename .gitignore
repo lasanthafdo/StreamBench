@@ -1,4 +1,6 @@
 data_test/
 streambox-last.tar.gz
 tbb/
+tbb
 *_output.txt
+.idea/

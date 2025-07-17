@@ -94,6 +94,12 @@ if [[ $CMD_ARGS == *"build"* ]]; then
 	sleep 2
 fi
 
+if [[ $CMD_ARGS == *"skiprun"* ]]; then
+	echo "Skipping execution..."
+	echo "Done."
+	exit 0
+fi
+
 echo "Running benchmark..."
 cd "$PATH_TO_SB" || exit 1
 ./test-yahoo.bin
