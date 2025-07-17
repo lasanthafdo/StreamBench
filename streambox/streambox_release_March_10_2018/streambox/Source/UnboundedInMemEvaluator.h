@@ -13,15 +13,15 @@ extern "C" {
 using namespace Kaskade;
 
 #ifdef MEASURE_LATENCY
-extern  boost::posix_time::ptime start; //global variable
+extern boost::posix_time::ptime start; //global variable
 #endif
 
 /* no generic impl */
-template<class T, template<class> class BundleT> class UnboundedInMemEvaluator;
+template<class T, template<class> class BundleT>
+class UnboundedInMemEvaluator;
 
 template<template<class> class BundleT>
 class UnboundedInMemEvaluator<string_range, BundleT> : public UnboundedInMemEvaluatorBase<string_range, BundleT> {
-
     using T = string_range;
     using TransformT = typename UnboundedInMemEvaluatorBase<T, BundleT>::TransformT;
     using BaseT = UnboundedInMemEvaluatorBase<T, BundleT>;
@@ -45,7 +45,8 @@ public:
     //  UnboundedInMemEvaluator(int node, int record_size = 1024)
     //			: record_size(record_size) { }
 
-    UnboundedInMemEvaluator(int node) { }
+    UnboundedInMemEvaluator(int node) {
+    }
 
     /* Create a task that waits for all outstanding records that arrived before
      * the wm are observed by the downstream) and propagates watermark @ts to
@@ -75,10 +76,8 @@ public:
      */
 
     static void SeedSourceWatermarkBlocking(EvaluationBundleContext *c,
-                                            shared_ptr<vector<TicketT>> tickets,
-                                            const ptime wm)
-    {
-
+                                            shared_ptr<vector<TicketT> > tickets,
+                                            const ptime wm) {
 #if 0 /* we shouldn't block threads from the threadpool */
         NumaThreadPool & pool = NumaThreadPool::instance();
 
@@ -98,7 +97,7 @@ public:
 				});
 #endif
 
-        for (auto && t : *tickets)
+        for (auto &&t: *tickets)
             t.wait();
 
         /* propagate source's watermark snapshot downstream. */
@@ -107,9 +106,8 @@ public:
 
     /* tp version; executed in a separate thread; expecting a thread id */
     static void SeedSourceWatermarkBlockingTP(int id, EvaluationBundleContext *c,
-                                              shared_ptr<vector<TicketT>> tickets,
-                                              const ptime ts)
-    {
+                                              shared_ptr<vector<TicketT> > tickets,
+                                              const ptime ts) {
         //  	EE("watermark: %s...", to_simple_string(ts).c_str());
 
         //  	EE("%s: wm: %s...",
@@ -334,18 +332,17 @@ public:
 	}
 #endif
 
-
 private:
     /* moved from WindowKeyedReducerEval (XXX merge later)
      * task_id: zero based.
      * return: <start, cnt> */
-    static pair<int,int> get_range(int num_items, int num_tasks, int task_id) {
+    static pair<int, int> get_range(int num_items, int num_tasks, int task_id) {
         /* not impl yet */
         xzl_bug_on(num_items == 0);
 
         xzl_bug_on(task_id > num_tasks - 1);
 
-        int items_per_task  = num_items / num_tasks;
+        int items_per_task = num_items / num_tasks;
 
         /* give first @num_items each 1 item */
         if (num_items < num_tasks) {
@@ -370,12 +367,10 @@ private:
     }
 
 public:
-
 #include "UnboundedInMemEvaluator_2out.h"
 
-    void evaluate(TransformT* t, EvaluationBundleContext *c,
-                  shared_ptr<BundleBase> bundle_ptr = nullptr) override
-    {
+    void evaluate(TransformT *t, EvaluationBundleContext *c,
+                  shared_ptr<BundleBase> bundle_ptr = nullptr) override {
         if (t->num_outputs == 2) {
             evaluate_2outputs(t, c, bundle_ptr);
             return;
@@ -403,12 +398,10 @@ public:
            t->punc_interval_ms / 1000);
 
 
-
-        cout << "Bundle per interval = " << bundle_per_interval  << "\n";
-        cout << "Punc interval = " << to_simple_string(punc_interval).c_str()  << "\n";
-        cout << "Delta = " << delta.total_milliseconds()  << "\n";
-        cout << "Records per bundle = " << records_per_bundle  << "\n";
-
+        cout << "Bundle per interval = " << bundle_per_interval << "\n";
+        cout << "Punc interval = " << to_simple_string(punc_interval).c_str() << "\n";
+        cout << "Delta = " << delta.total_milliseconds() << "\n";
+        cout << "Records per bundle = " << records_per_bundle << "\n";
 
 
         //			bool is_active = false;
@@ -434,7 +427,7 @@ public:
         /* source is also MT. 3 seems good for win-grep */
         const int total_tasks = CONFIG_SOURCE_THREADS;
 
-        vector <std::future<void>> futures;
+        vector<std::future<void> > futures;
 
 
         printf("Starting adding timestamps to records... \n");
@@ -488,13 +481,11 @@ public:
             printf("This is the start_tick: %s outside the for loops. \n", to_simple_string(start_tick).c_str());
 
             for (int task_id = 0; task_id < total_tasks; task_id++) {
-
                 /* each worker works on a range of bundles in the epoch */
                 //			auto source_task_lambda = [t, &total_tasks, &bundle_per_internval, task_id](int id)
                 auto source_task_lambda = [t, &total_tasks, &bundle_per_interval,
-                        this, &delta, &out, &c, &records_per_bundle, &num_nodes,
-                        task_id, offset](int id)
-                {
+                            this, &delta, &out, &c, &records_per_bundle, &num_nodes,
+                            task_id, offset](int id) {
                     auto range = get_range(bundle_per_interval, total_tasks, task_id);
 
                     auto local_offset = (offset + records_per_bundle * range.first) % t->buffer_size_records;
@@ -510,10 +501,10 @@ public:
                         /* assemble a bundle by drawing records from the corresponding
                          * NUMA record buffer. */
 
-                        shared_ptr<BundleT<T>>
-                                bundle(make_shared<BundleT<T>>(
-                                records_per_bundle,  /* reserved capacity */
-                                nodeid));
+                        shared_ptr<BundleT<T> >
+                                bundle(make_shared<BundleT<T> >(
+                                    records_per_bundle, /* reserved capacity */
+                                    nodeid));
 
                         xzl_assert(bundle);
 
@@ -536,7 +527,8 @@ public:
                             bundle->add_record(t->record_buffers[nodeid][local_offset]);
                         }
 
-                        cout << "Timestamp for this run  is: " << to_simple_string(BaseT::current_ts + delta * i).c_str() << "\n";
+                        cout << "Timestamp for this run  is: " << to_simple_string(BaseT::current_ts + delta * i).
+                                c_str() << "\n";
                         cout << "Bundles " << bundle.use_count() << "\n";
                         out->consumer->depositOneBundle(bundle, nodeid);
                         c->SpawnConsumer();
@@ -550,11 +542,11 @@ public:
                 }
 
                 futures.push_back( // store a future
-                        c->executor_.push(source_task_lambda) /* submit to task queue */
+                    c->executor_.push(source_task_lambda) /* submit to task queue */
                 );
-            }  // end of tasks
+            } // end of tasks
 
-            for (auto && f : futures) {
+            for (auto &&f: futures) {
                 f.get();
             }
             futures.clear();
@@ -609,8 +601,8 @@ public:
             t->record_counter_.fetch_add(t->records_per_interval,
                                          std::memory_order_relaxed);
 
-            boost::posix_time::ptime end_tick = \
-							    boost::posix_time::microsec_clock::local_time();
+            boost::posix_time::ptime end_tick =
+                    boost::posix_time::microsec_clock::local_time();
             auto elapsed_us = (end_tick - start_tick).total_microseconds();
 
 
@@ -620,9 +612,8 @@ public:
             cout << "us per iteration: " << us_per_iteration << "\n";
 
 
-
             xzl_assert(elapsed_us > 0);
-            if ((unsigned long)elapsed_us > us_per_iteration)
+            if ((unsigned long) elapsed_us > us_per_iteration)
                 EE("warning: source runs at full speed.");
             else {
                 usleep(us_per_iteration - elapsed_us);
@@ -646,7 +637,8 @@ public:
             c->UpdateSourceWatermark(BaseT::current_ts);
 
             /* Useful before the sink sees the 1st watermark */
-            if (c->GetTargetWm() == max_date_time) { /* unassigned */
+            if (c->GetTargetWm() == max_date_time) {
+                /* unassigned */
                 c->SetTargetWm(BaseT::current_ts);
             }
 
@@ -659,15 +651,13 @@ public:
             c->SpawnConsumer();
             if (++wm_node == numa_max_node())
                 wm_node = 0;
-
-        }   // while
-    }  // end of eval()
+        } // while
+    } // end of eval()
 };
 
 /* owned by hym */
 template<template<class> class OutputBundleT>
 class UnboundedInMemEvaluator<long, OutputBundleT> : public UnboundedInMemEvaluatorBase<long, OutputBundleT> {
-
     using T = long;
     using TransformT = typename UnboundedInMemEvaluatorBase<T, OutputBundleT>::TransformT;
     //using OutputBundleT = RecordBitmapBundle<T>;
@@ -675,12 +665,12 @@ class UnboundedInMemEvaluator<long, OutputBundleT> : public UnboundedInMemEvalua
 
 public:
     /* we are not bound to any node */
-    UnboundedInMemEvaluator(int node) { }
+    UnboundedInMemEvaluator(int node) {
+    }
 
-    void evaluate(TransformT* t, EvaluationBundleContext *c,
+    void evaluate(TransformT *t, EvaluationBundleContext *c,
                   shared_ptr<BundleBase> bundle_ptr = nullptr) override {
-
-        PValue* out[] = { t->getFirstOutput(), t->getSecondOutput() };
+        PValue *out[] = {t->getFirstOutput(), t->getSecondOutput()};
         assert(out[0]);
 
         int num_outputs = 1;
@@ -710,23 +700,21 @@ public:
                 1e6 * t->records_per_interval * 2 / t->target_tput; /* the target us */
         //uint64_t offset1 = 0;
         //uint64_t offset2 = 0;
-        uint64_t offset[10] = {0};//support 10 input streams at most
-        while(true){
+        uint64_t offset[10] = {0}; //support 10 input streams at most
+        while (true) {
             boost::posix_time::ptime start_tick =
                     boost::posix_time::microsec_clock::local_time();
-            for(unsigned int i = 0; i < bundle_per_interval; i++){
+            for (unsigned int i = 0; i < bundle_per_interval; i++) {
                 int nodeid = i % num_nodes;
 
-                for(int oid = 0; oid < num_outputs; oid++){
-
-                    shared_ptr<OutputBundleT<T>>
-                            bundle(make_shared<OutputBundleT<T>>(
-                            records_per_bundle,  /* reserved capacity */
-                            nodeid)); //XXX always on NODE 0
+                for (int oid = 0; oid < num_outputs; oid++) {
+                    shared_ptr<OutputBundleT<T> >
+                            bundle(make_shared<OutputBundleT<T> >(
+                                records_per_bundle, /* reserved capacity */
+                                nodeid)); //XXX always on NODE 0
                     assert(bundle);
-                    for(unsigned int j = 0; j < records_per_bundle; j++, offset[oid]++){
-
-                        if(offset[oid] == t->record_num){
+                    for (unsigned int j = 0; j < records_per_bundle; j++, offset[oid]++) {
+                        if (offset[oid] == t->record_num) {
                             offset[oid] = 0; //wrap around
                         }
                         t->record_buffers[nodeid][offset[oid]].ts = BaseT::current_ts + delta * i;
@@ -737,7 +725,7 @@ public:
                     //std::cout << "deposit one bundle ++++++" << std::endl;
                     c->SpawnConsumer();
                 }
-            }//end for: bundle_per_interval
+            } //end for: bundle_per_interval
 
             t->byte_counter_.fetch_add(t->records_per_interval * t->record_len * 2,
                                        std::memory_order_relaxed);
@@ -750,7 +738,7 @@ public:
             auto elapsed_us = (end_tick - start_tick).total_microseconds();
             assert(elapsed_us > 0);
 
-            if ((unsigned long)elapsed_us > us_per_iteration)
+            if ((unsigned long) elapsed_us > us_per_iteration)
                 EE("warning: source runs at full speed.");
             else {
                 usleep(us_per_iteration - elapsed_us);
@@ -763,23 +751,23 @@ public:
             c->UpdateSourceWatermark(BaseT::current_ts);
 
             /* Useful before the sink sees the 1st watermark */
-            if (c->GetTargetWm() == max_date_time) { /* unassigned */
+            if (c->GetTargetWm() == max_date_time) {
+                /* unassigned */
                 c->SetTargetWm(BaseT::current_ts);
             }
 
             static int wm_node = 0;
-            for(int oid = 0; oid < num_outputs; oid++){
+            for (int oid = 0; oid < num_outputs; oid++) {
                 out[oid]->consumer->depositOnePunc(
-                        make_shared<Punc>(BaseT::current_ts, wm_node), wm_node);
+                    make_shared<Punc>(BaseT::current_ts, wm_node), wm_node);
                 //std::cout << "deposit one punc --------" << std::endl;
                 c->SpawnConsumer();
-                if (++wm_node == numa_max_node()){
+                if (++wm_node == numa_max_node()) {
                     wm_node = 0;
                 }
             }
-
-        }//end while
-    }//end evaluate
+        } //end while
+    } //end evaluate
 
 #if 0
     // Old version: generate random data
@@ -799,9 +787,9 @@ public:
 		const int bundle_count = numa_num_configured_cpus();
 		const int bundles_per_node = bundle_count / (numa_max_node() + 1);
 		int a = bundles_per_node; a = a; //used to fix warning
-		//XXX const int records_per_bundle = 1024;  /* to be changed */ 
+		//XXX const int records_per_bundle = 1024;  /* to be changed */
 
-		const int records_per_bundle = 5;  /* to be changed */ 
+		const int records_per_bundle = 5;  /* to be changed */
 
 		//		for(int m = 0; m < 3; m++){
 		while(true){
@@ -812,7 +800,7 @@ public:
 				//int nodes = numa_max_node() + 1;
 				int nodes = 1; //XXX only on node 0 now
 				for (int nodeid = 0; nodeid < nodes; nodeid++) {
-					//create a multi-record bundle 
+					//create a multi-record bundle
 
 					shared_ptr<RecordBitmapBundle<T>>
 						bundle(make_shared<OutputBundleT>(
@@ -975,313 +963,9 @@ public:
 };
 
 /* owned by george */
+/* but modified by Lasantha */
 template<template<class> class BundleT>
-//class UnboundedInMemEvaluator<Event, OutputBundleT> : public UnboundedInMemEvaluatorBase<Event, OutputBundleT> {
-//
-//    using T = Event;
-//    using TransformT = typename UnboundedInMemEvaluatorBase<T, OutputBundleT>::TransformT;
-//    //using OutputBundleT = RecordBitmapBundle<T>;
-//    using BaseT = UnboundedInMemEvaluatorBase<T, OutputBundleT>;
-//
-//public:
-//    /* we are not bound to any node */
-//    UnboundedInMemEvaluator(int node) { }
-//
-//    void evaluate(TransformT* t, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr = nullptr) override {
-//
-//        PValue* out[] = { t->getFirstOutput(), t->getSecondOutput() };
-//        assert(out[0]);
-//
-//        int num_outputs = 1;
-//        if (out[1])
-//            num_outputs = 2;
-//
-//        //# of bundles between two puncs
-//        const uint64_t bundle_per_interval = 1 * numa_num_configured_cpus();
-//
-//        boost::posix_time::time_duration punc_interval =
-//                milliseconds(t->punc_interval_ms);
-//
-//        boost::posix_time::time_duration delta =
-//                milliseconds(t->punc_interval_ms) / bundle_per_interval;
-//
-//        const uint64_t records_per_bundle =
-//                t->records_per_interval / bundle_per_interval;
-//
-//        EE(" ---- punc internal is %d sec (ev time) --- ",
-//           t->punc_interval_ms / 1000);
-//
-//        //XXX WARNING: comment this temporarilly. Remember to restore this later!!!
-//        //const int num_nodes = numa_max_node() + 1;
-//        const int num_nodes = 1;
-//
-//        uint64_t us_per_iteration = 1e6 * t->records_per_interval * 2 / t->target_tput; /* the target us */
-//        //uint64_t offset1 = 0;
-//        //uint64_t offset2 = 0;
-//        uint64_t offset[10] = {0};//support 10 input streams at most
-//        while(true){
-//            boost::posix_time::ptime start_tick =
-//                    boost::posix_time::microsec_clock::local_time();
-//            for(unsigned int i = 0; i < bundle_per_interval; i++){
-//                int nodeid = i % num_nodes;
-//
-//                for(int oid = 0; oid < num_outputs; oid++){
-//
-//                    shared_ptr<OutputBundleT<T>>
-//                            bundle(make_shared<OutputBundleT<T>>(
-//                            records_per_bundle,  /* reserved capacity */
-//                            nodeid)); //XXX always on NODE 0
-//                    assert(bundle);
-//                    for(unsigned int j = 0; j < records_per_bundle; j++, offset[oid]++){
-//
-//                        if(offset[oid] == t->record_num){
-//                            offset[oid] = 0; //wrap around
-//                        }
-//                        t->record_buffers[nodeid][offset[oid]].ts = BaseT::current_ts + delta * i;
-//                        bundle->add_record(t->record_buffers[nodeid][offset[oid]]);
-//                    }
-//                    //t->FillBundle(oid, *bundle, records_per_bundle, 						BaseT::current_ts + delta * i);
-//                    out[oid]->consumer->depositOneBundle(bundle, 0); //XXX only on node 0
-//                    //std::cout << "deposit one bundle ++++++" << std::endl;
-//                    c->SpawnConsumer();
-//                }
-//            }//end for: bundle_per_interval
-//
-//            t->byte_counter_.fetch_add(t->records_per_interval * t->record_len * 2, std::memory_order_relaxed);
-//
-//            t->record_counter_.fetch_add(t->records_per_interval * 2,
-//                                         std::memory_order_relaxed);
-//
-//            boost::posix_time::ptime end_tick =
-//                    boost::posix_time::microsec_clock::local_time();
-//            auto elapsed_us = (end_tick - start_tick).total_microseconds();
-//            assert(elapsed_us > 0);
-//
-//            if ((unsigned long)elapsed_us > us_per_iteration)
-//                EE("warning: source runs at full speed.");
-//            else {
-//                usleep(us_per_iteration - elapsed_us);
-//                I("source pauses for %lu us", us_per_iteration - elapsed_us);
-//            }
-//
-//            BaseT::current_ts += punc_interval;
-//            BaseT::current_ts += milliseconds(t->session_gap_ms);
-//
-//            c->UpdateSourceWatermark(BaseT::current_ts);
-//
-//            /* Useful before the sink sees the 1st watermark */
-//            if (c->GetTargetWm() == max_date_time) { /* unassigned */
-//                c->SetTargetWm(BaseT::current_ts);
-//            }
-//
-//            static int wm_node = 0;
-//            for(int oid = 0; oid < num_outputs; oid++){
-//                out[oid]->consumer->depositOnePunc(
-//                        make_shared<Punc>(BaseT::current_ts, wm_node), wm_node);
-//                //std::cout << "deposit one punc --------" << std::endl;
-//                c->SpawnConsumer();
-//                if (++wm_node == numa_max_node()){
-//                    wm_node = 0;
-//                }
-//            }
-//
-//        }//end while
-//    }//end evaluate
-//
-//#if 0
-//    // Old version: generate random data
-//	void evaluate(TransformT* t, EvaluationBundleContext *c,
-//			shared_ptr<BundleBase> bundle_ptr = nullptr) override {
-//
-//		//std::cout << "UnboundedInMemEvaluator.h line 517:  evaluate " << std::endl;
-//		boost::posix_time::time_duration delta = milliseconds(t->interval_ms);
-//
-//		PValue* out[] = { t->getFirstOutput(), t->getSecondOutput() };
-//		assert(out[0]);
-//
-//		int num_outputs = 1;
-//		if (out[1])
-//			num_outputs = 2;
-//
-//		const int bundle_count = numa_num_configured_cpus();
-//		const int bundles_per_node = bundle_count / (numa_max_node() + 1);
-//		int a = bundles_per_node; a = a; //used to fix warning
-//		//XXX const int records_per_bundle = 1024;  /* to be changed */
-//
-//		const int records_per_bundle = 5;  /* to be changed */
-//
-//		//		for(int m = 0; m < 3; m++){
-//		while(true){
-//			//pause_between_waves();
-//#if 0
-//			//XXX is_pressur_high TODO
-//			for (int i = 0; i < bundles_per_node; i++) {
-//				//int nodes = numa_max_node() + 1;
-//				int nodes = 1; //XXX only on node 0 now
-//				for (int nodeid = 0; nodeid < nodes; nodeid++) {
-//					//create a multi-record bundle
-//
-//					shared_ptr<RecordBitmapBundle<T>>
-//						bundle(make_shared<OutputBundleT>(
-//									records_per_bundle,  /* reserved capacity */
-//									nodeid));
-//
-//					assert(bundle);
-//
-//					t->FillBundle(oid, *bundle, records_per_bundle,
-//							current_ts + delta * i);
-//					out[i]->consumer->depositOneBundle(bundle, nodeid);
-//					//XXX c->SpawnConsumer is usless now actually
-//					c->SpawnConsumer(out[oid], nodeid);
-//				}
-//			}
-//
-//			current_ts = current_ts + delta * bundle_count;
-//			current_ts = current_ts + milliseconds(t->session_gap_ms);
-//
-//			c->UpdateSourceWatermark(current_ts);
-//			if (c->GetTargetWm() == max_date_time) { /* unassigned */
-//				c->SetTargetWm(current_ts);
-//			}
-//
-//			static int wm_node = 0;
-//			out[i]->consumer->depositOnePunc(make_shared<Punc>(current_ts, wm_node), wm_node);
-//#endif
-//			//XXX is_pressur_high TODO
-//
-//			// 4 bundles + 1 punctuation on both of out[0] and out[1]
-//			int bundle_per_container = 2;
-//			for(int i = 0; i < bundle_per_container; i++){
-//				//num_outputs should be 2
-//				//std::cout << "num_outputs is " << num_outputs << std::endl;
-//				for(int oid = 0; oid < num_outputs; oid++){
-//					//shared_ptr<RecordBitmapBundle<T>>
-//					shared_ptr<OutputBundleT<T>>
-//						bundle(make_shared<OutputBundleT<T>>(
-//									records_per_bundle,  /* reserved capacity */
-//									0)); //XXX always on NODE 0
-//
-//					assert(bundle);
-//					t->FillBundle(oid, *bundle, records_per_bundle, BaseT::current_ts + delta * i);
-//					out[oid]->consumer->depositOneBundle(bundle, 0); //XXX only on node 0
-//#ifdef DEBUG
-//					std::cout << __FILE__ << ": " <<  __LINE__ << "UnboundedInMem deposit a bundle to " << out[oid]->consumer->getName() << std::endl;
-//#endif
-//				}
-//			}
-//
-//			BaseT::current_ts = BaseT::current_ts + delta * bundle_per_container;
-//			BaseT::current_ts = BaseT::current_ts + milliseconds(t->session_gap_ms);
-//
-//			c->UpdateSourceWatermark(BaseT::current_ts);
-//			if (c->GetTargetWm() == max_date_time) { /* unassigned */
-//				c->SetTargetWm(BaseT::current_ts);
-//			}
-//
-//			static int wm_node = 0;
-//			for(int oid = 0; oid < num_outputs; oid++){
-//#ifdef DEBUG
-//				std::cout << __FILE__ << ": " <<  __LINE__ << "UnboundedInMem deposit a punc to " << out[oid]->consumer->getName() << std::endl;
-//#endif
-//				out[oid]->consumer->depositOnePunc(
-//						make_shared<Punc>(BaseT::current_ts, wm_node), wm_node);
-//				c->SpawnConsumer();
-//			}
-//		}//end while
-//	}//end evaluate
-//#endif
-//
-//#if 0
-//    public:
-//	/* we are not bound to any node */
-//	UnboundedInMemEvaluator(int node) { }
-//
-//	void evaluate(TransformT* t, EvaluationBundleContext *c,
-//			shared_ptr<BundleBase> bundle_ptr = nullptr) override {
-//
-//#ifdef USE_NUMA_TP // todo
-//
-//		boost::posix_time::time_duration delta = milliseconds(t->interval_ms);
-//
-//		PValue* out[] = { t->getFirstOutput(), t->getSecondOutput() };
-//		assert(out[0]);
-//
-//		int num_outputs = 1;
-//		if (out[1])
-//			num_outputs = 2;
-//
-//		NumaThreadPool& pool = NumaThreadPool::instance();
-//		/* # of bundles to emit before pause and advance watermark.
-//		 * if there's multiple outputs, each will get the same number. */
-//		const int bundle_count = pool.cpus() * 2;
-//		//    const int bundle_count = 2;	// debugging
-//		const int bundles_per_node = bundle_count / pool.nodes();
-//		const int records_per_bundle = 1024;  /* to be changed */
-//
-//		while (true) {
-//#if 0
-//			W(" ----------- to sleep %d ms (XXX shouldn't sleep?) ", t->interval_ms);
-//			usleep(t->interval_ms * 1000);
-//#endif
-//			pause_between_waves();
-//
-//			if (is_pressure_high(c)) {
-//				W("downstream pressure too high. backoff");
-//				continue;
-//			}
-//
-//			/*
-//			 * issue multi bundles at a time. create bundles_per_node * #nodes
-//			 * tasks in parallel.
-//			 *
-//			 * each bundle only has one string, and spawns a new task.
-//			 */
-//
-//			//      vector<Ticket> tickets(bundle_count * num_outputs);
-//			vector<Ticket> tickets;
-//
-//			for (int i = 0; i < bundles_per_node; i++) {
-//				for (int nodeid = 0; nodeid < pool.nodes(); nodeid++) {
-//					for (int oid = 0; oid < num_outputs; oid ++) {
-//
-//						/* -- each bundle has multiple fixed-size records -- */
-//						//            tickets[nodeid * bundles_per_node + i] =
-//						tickets.push_back(
-//								pool.runOnNode(nodeid, Task([=] { // lambda.
-//										/* create a multi-record bundle */
-//										shared_ptr<RecordBitmapBundle<T>>
-//										bundle(make_shared<OutputBundleT>(
-//													records_per_bundle,  /* reserved capacity */
-//													nodeid));
-//
-//										assert(bundle);
-//
-//										t->FillBundle(oid, *bundle, records_per_bundle,
-//												current_ts + delta * i);
-//
-//										out[oid]->depositOneBundle(bundle, nodeid);
-//										c->SpawnConsumer(out[oid], nodeid);
-//
-//										return 1;
-//										}))); // end of lambda
-//					} // for
-//				} // for
-//			} // for
-//
-//			for (auto && t : tickets)
-//				t.wait();
-//
-//			// expensive?
-//			current_ts = current_ts + delta * bundle_count;
-//			current_ts = current_ts + milliseconds(t->session_gap_ms);
-//			c->SeedWatermark(current_ts);
-//		} // while (true)
-//#endif
-//	}//end evaluate
-//#endif
-//};
 class UnboundedInMemEvaluator<Event, BundleT> : public UnboundedInMemEvaluatorBase<Event, BundleT> {
-
     using T = Event;
     using TransformT = typename UnboundedInMemEvaluatorBase<T, BundleT>::TransformT;
     using BaseT = UnboundedInMemEvaluatorBase<T, BundleT>;
@@ -1305,7 +989,8 @@ public:
     //  UnboundedInMemEvaluator(int node, int record_size = 1024)
     //			: record_size(record_size) { }
 
-    UnboundedInMemEvaluator(int node) { }
+    UnboundedInMemEvaluator(int node) {
+    }
 
     /* Create a task that waits for all outstanding records that arrived before
      * the wm are observed by the downstream) and propagates watermark @ts to
@@ -1335,10 +1020,8 @@ public:
      */
 
     static void SeedSourceWatermarkBlocking(EvaluationBundleContext *c,
-                                            shared_ptr<vector<TicketT>> tickets,
-                                            const ptime wm)
-    {
-
+                                            shared_ptr<vector<TicketT> > tickets,
+                                            const ptime wm) {
 #if 0 /* we shouldn't block threads from the threadpool */
         NumaThreadPool & pool = NumaThreadPool::instance();
 
@@ -1358,7 +1041,7 @@ public:
 				});
 #endif
 
-        for (auto && t : *tickets)
+        for (auto &&t: *tickets)
             t.wait();
 
         /* propagate source's watermark snapshot downstream. */
@@ -1367,9 +1050,8 @@ public:
 
     /* tp version; executed in a separate thread; expecting a thread id */
     static void SeedSourceWatermarkBlockingTP(int id, EvaluationBundleContext *c,
-                                              shared_ptr<vector<TicketT>> tickets,
-                                              const ptime ts)
-    {
+                                              shared_ptr<vector<TicketT> > tickets,
+                                              const ptime ts) {
         //  	EE("watermark: %s...", to_simple_string(ts).c_str());
 
         //  	EE("%s: wm: %s...",
@@ -1594,18 +1276,17 @@ public:
 	}
 #endif
 
-
 private:
     /* moved from WindowKeyedReducerEval (XXX merge later)
      * task_id: zero based.
      * return: <start, cnt> */
-    static pair<int,int> get_range(int num_items, int num_tasks, int task_id) {
+    static pair<int, int> get_range(int num_items, int num_tasks, int task_id) {
         /* not impl yet */
         xzl_bug_on(num_items == 0);
 
         xzl_bug_on(task_id > num_tasks - 1);
 
-        int items_per_task  = num_items / num_tasks;
+        int items_per_task = num_items / num_tasks;
 
         /* give first @num_items each 1 item */
         if (num_items < num_tasks) {
@@ -1630,13 +1311,10 @@ private:
     }
 
 public:
-
 #include "UnboundedInMemEvaluator_2out.h"
 
-    void evaluate(TransformT* t, EvaluationBundleContext *c,
-                  shared_ptr<BundleBase> bundle_ptr = nullptr) override
-    {
-
+    void evaluate(TransformT *t, EvaluationBundleContext *c,
+                  shared_ptr<BundleBase> bundle_ptr = nullptr) override {
         auto out = t->getFirstOutput();
         assert(out);
 
@@ -1653,7 +1331,7 @@ public:
 
         //    const int bundle_count = 2;	// debugging
         const uint64_t records_per_bundle
-                = (t->records_per_interval / bundle_per_interval)*CONFIG_SOURCE_THREADS;
+                = (t->records_per_interval / bundle_per_interval) * CONFIG_SOURCE_THREADS;
 
         EE(" ---- punc internal is %d sec (ev time) --- ",
            t->punc_interval_ms / 1000);
@@ -1673,16 +1351,17 @@ public:
          * (since each buffer has same content)
          */
         uint64_t offset = 0;
-        uint64_t us_per_iteration = 1e6 * t->records_per_interval / (t->target_tput/CONFIG_SOURCE_THREADS); /* the target us */
+        uint64_t us_per_iteration = 1e6 * t->records_per_interval / (t->target_tput / CONFIG_SOURCE_THREADS);
+        /* the target us */
 
         //		 EE("XXX us_per_iteration %lu", us_per_iteration);
 
         /* source is also MT. 3 seems good for win-grep */
         const int total_tasks = CONFIG_SOURCE_THREADS;
 
-        const int iter = 1;//t->punc_interval_ms/1000;
+        const int iter = 1; //t->punc_interval_ms/1000;
 
-        vector <std::future<void>> futures;
+        vector<std::future<void> > futures;
 
 
         printf("Starting adding timestamps to records... \n");
@@ -1726,29 +1405,25 @@ public:
              */
 
             for (int it = 0; it < iter; it++) {
-
                 boost::posix_time::ptime start_tick = boost::posix_time::microsec_clock::local_time();
                 printf("This is the start_tick: %s outside the for loops. \n", to_simple_string(start_tick).c_str());
 
                 for (int task_id = 0; task_id < total_tasks; task_id++) {
-
                     /* each worker works on a range of bundles in the epoch */
                     //			auto source_task_lambda = [t, &total_tasks, &bundle_per_internval, task_id](int id)
                     auto source_task_lambda = [t, &total_tasks, &bundle_per_interval,
-                            this, &delta, &out, &c, &records_per_bundle, &num_nodes,
-                            task_id, offset](int id) {
-
+                                this, &delta, &out, &c, &records_per_bundle, &num_nodes,
+                                task_id, offset](int id) {
                         cpu_set_t cpuset;
                         CPU_ZERO(&cpuset);
-                        int cpu_core = (2 * task_id + 1) %20;
-                        CPU_SET((cpu_core + 1)%20, &cpuset);
+                        int cpu_core = (2 * task_id + 1) % 24;
+                        CPU_SET((cpu_core + 1) % 24, &cpuset);
                         pthread_t current_thread = pthread_self();
                         std::cout << "Generator Thread #" << task_id << ": on CPU " << sched_getcpu() << "\n";
 
                         pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
 
                         auto range = get_range(bundle_per_interval, total_tasks, task_id);
-
                         auto local_offset = (offset + records_per_bundle * range.first) % t->buffer_size_records;
 
                         I("source worker %d: bundle range [%d, %d). record offset %lu; total records %lu",
@@ -1762,10 +1437,10 @@ public:
                             /* assemble a bundle by drawing records from the corresponding
                              * NUMA record buffer. */
 
-                            shared_ptr<BundleT<T>>
-                                    bundle(make_shared<BundleT<T>>(
-                                    records_per_bundle,  /* reserved capacity */
-                                    nodeid));
+                            shared_ptr<BundleT<T> >
+                                    bundle(make_shared<BundleT<T> >(
+                                        records_per_bundle, /* reserved capacity */
+                                        nodeid));
 
                             xzl_assert(bundle);
 
@@ -1774,7 +1449,6 @@ public:
                              * 2. we don't split records at the word boundary.
                              * 3. we don't force each string_range's later char to be \0
                              */
-
                             VV("pack records in bundle ts %s:",
                                to_simple_string(current_ts + delta * i).c_str());
 
@@ -1887,11 +1561,11 @@ public:
                     }
 
                     futures.push_back( // store a future
-                            c->executor_.push(source_task_lambda) /* submit to task queue */
+                        c->executor_.push(source_task_lambda) /* submit to task queue */
                     );
-                }  // end of tasks
+                } // end of tasks
 
-                for (auto &&f : futures) {
+                for (auto &&f: futures) {
                     f.get();
                 }
                 futures.clear();
@@ -1962,7 +1636,6 @@ public:
                     usleep(us_per_iteration - elapsed_us);
                     EE("source pauses for %lu us", us_per_iteration - elapsed_us);
                 }
-
             }
             BaseT::current_ts += punc_interval;
             BaseT::current_ts += milliseconds(t->session_gap_ms);
@@ -1978,7 +1651,8 @@ public:
             c->UpdateSourceWatermark(BaseT::current_ts);
 
             /* Useful before the sink sees the 1st watermark */
-            if (c->GetTargetWm() == max_date_time) { /* unassigned */
+            if (c->GetTargetWm() == max_date_time) {
+                /* unassigned */
                 c->SetTargetWm(BaseT::current_ts);
             }
 
@@ -1991,9 +1665,8 @@ public:
             c->SpawnConsumer();
             if (++wm_node == numa_max_node())
                 wm_node = 0;
-
-        }   // while
-    }  // end of eval()
+        } // while
+    } // end of eval()
 };
 
 #endif /* UNBOUNDEDINMEMEVALUATOR_H */

@@ -244,7 +244,6 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
 add_library(creek STATIC
         ${SOURCES}
-        Makefile
 )
 
 add_executable(test-grep.bin
@@ -302,7 +301,6 @@ add_executable(test-yahoo.bin
         Mapper/YahooMapper.cpp
         Sink/RecordBundleSink.cpp
         Sink/WindowsBundleSink.cpp
-        Makefile
 )
 
 #add_executable(test-wc.bin

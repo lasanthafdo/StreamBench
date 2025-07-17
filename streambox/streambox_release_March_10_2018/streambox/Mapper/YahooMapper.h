@@ -19,16 +19,15 @@
         class OutputT,
         template<class> class BundleT >*/
 
-template <class InputT = Event,
-        class OutputT = pair<creek::string, long>,
-        template<class> class BundleT = RecordBitmapBundle>
+template<class InputT = Event,
+    class OutputT = pair<creek::string, long>,
+    template<class> class BundleT = RecordBitmapBundle>
 class YahooMapper : public Mapper<InputT> {
-
-//  using OutputBundleT = RecordBitmapBundle<OutputT>;
+    //  using OutputBundleT = RecordBitmapBundle<OutputT>;
 
     using InputBundleT = BundleT<InputT>;
     using OutputBundleT = BundleT<OutputT>;
-    using TransformT = YahooMapper<InputT,OutputT,BundleT>;
+    using TransformT = YahooMapper<InputT, OutputT, BundleT>;
 
 public:
     static atomic<unsigned long> record_counter_;
@@ -39,18 +38,18 @@ private:
     std::unordered_map<creek::string, creek::string>::iterator itemFromMap;
 
 public:
-
-    YahooMapper(string name = "yahoo_mapper", unordered_map<creek::string, creek::string> campaigns = nullptr) : Mapper<InputT>(name) {
+    YahooMapper(string name = "yahoo_mapper",
+                unordered_map<creek::string, creek::string> campaigns = nullptr) : Mapper<InputT>(name) {
         this->campaigns = campaigns;
     }
 
-    uint64_t do_map(Record<InputT> const & in,
-                           shared_ptr<OutputBundleT> output_bundle);
+    uint64_t do_map(Record<InputT> const &in,
+                    shared_ptr<OutputBundleT> output_bundle);
 
     void ExecEvaluator(int nodeid, EvaluationBundleContext *c,
                        shared_ptr<BundleBase> bundle = nullptr) override;
 
-    bool ReportStatistics(PTransform::Statstics* stat) override {
+    bool ReportStatistics(PTransform::Statstics *stat) override {
         /* internal accounting */
         static unsigned long total_records = 0, total_bytes = 0;
         /* last time we report */
@@ -71,9 +70,7 @@ public:
             return false;
         }
 
-        boost::posix_time::time_duration diff = now - last_check;
-
-        {
+        boost::posix_time::time_duration diff = now - last_check; {
             double interval_sec = (double) diff.total_milliseconds() / 1000;
             double total_sec = (double) (now - start_time).total_milliseconds() / 1000;
 
@@ -93,10 +90,9 @@ public:
             last_records = total_records;
         }
 
-//  	E("bundle counter %lu", this->bundle_counter_.load());
+        //  	E("bundle counter %lu", this->bundle_counter_.load());
 
         return true;
     }
-
 };
 #endif /* YAHOOMAPPER_H */

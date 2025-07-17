@@ -21,7 +21,7 @@
 
 //	#define USE_NUMA_ALLOC 1 /* numa-aware allocation. using Kaskade::Kalloc */
 
-	#define INPUT_ALWAYS_ON_NODE0	1 /* input queue only for node0, i.e no numa? */
+	#define INPUT_ALWAYS_ON_NODE0	0 /* input queue only for node0, i.e no numa? */
 	#define MEASURE_LATENCY	1
 
 #else  /* debug build */
@@ -53,13 +53,13 @@
 #define CONFIG_JOIN_HT_PARTITIONS 		4
 
 /* how many threads used by the source? 1 is default; 3 seems okay for intense cases. */
-#define CONFIG_SOURCE_THREADS 				2
+#define CONFIG_SOURCE_THREADS 				1
 
 #define CONFIG_MIN_PERNODE_BUFFER_SIZE_MB		200UL  /* around 3x cache? */
 #define CONFIG_MIN_EPOCHS_PERNODE_BUFFER		2UL /* how many epochs before the input buffer wraps around? */
 
 /* -- ARM specific -- */
-#define CONFIG_MAX_NUM_CORES 					16		/* the workspace d/s depends on this */
+#define CONFIG_MAX_NUM_CORES 					12		/* the workspace d/s depends on this */
 #define CONFIG_MAX_BUNDLES_PER_EPOCH 	32 		/* how many bundles per epoch? */
 
 #define CONFIG_MEMBLOCK_SIZE		SZ_2M  /* per thread memblock */

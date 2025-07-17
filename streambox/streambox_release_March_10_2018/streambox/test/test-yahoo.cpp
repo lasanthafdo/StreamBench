@@ -7,22 +7,14 @@
  * transform header.
  */
 #include "Source/UnboundedInMemEvaluator.h"
-#include "Mapper/WordCountMapperEvaluator.h"
 #include "Win/WinGBKEvaluator.h"
 #include "WinKeyReducer/WinKeyReducerEval.h"
 #include "Sink/WindowsBundleSinkEvaluator.h"
-#include "Select/SimpleSelect.h"
 #include "Source/YahooBenchmarkSource.h"
-#include "Win/FixedWindowIntoEvaluator.h"
-#include "WinSum/WinSum_mergeset.h"
-#include "Sink/WindowsBundleSinkEvaluator.h"
 #include "test-common.h"
+
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <WinSum/WinSum_mergevector.h>
 
 /*
  *      UnboundedInMem
@@ -62,19 +54,16 @@ pipeline_config config = {
 };
 #else
 pipeline_config config = {
-        .records_per_interval = (64 * 10 * 1000),
-        .target_tput = (2700 * 1000),
-        .record_size = 136,
-        .input_file =
-"/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt"
-        ,
-        .cores = 16,//std::thread::hardware_concurrency() - 1,
+    .records_per_interval = (64 * 10 * 1000),
+    .target_tput = (2700 * 1000),
+    .record_size = 136,
+    .input_file =
+    "/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt",
+    .cores = 16, //std::thread::hardware_concurrency() - 1,
 };
 #endif
 
-void testYahooBenchmark()
-{
-
+void testYahooBenchmark() {
     config.cores = 8;
 
     using namespace boost::uuids;
@@ -86,38 +75,36 @@ void testYahooBenchmark()
     campaigns.reserve(1000);
 
     std::ifstream infile(
-"/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/CampAds.txt"
-        );
+        "/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/CampAds.txt"
+    );
     std::string line;
     vector<string> myString;
     int i = 0;
-    while (std::getline(infile, line))
-    {
+    while (std::getline(infile, line)) {
         istringstream ss(line);
         string token;
-        while (getline(ss, token,',')){
-            //ss.ignore();
+        while (getline(ss, token, ',')) {
             myString.push_back(token);
-            //cout << myString[i] << endl;
             i++;
         }
         //campaigns.insert(std::pair<uuid, uuid>(parse_uuid(myString[i-2]), parse_uuid(myString[i-1]))); //[parse_uuid(myString.at(i-2))] = parse_uuid(myString.at(i-1));
-        campaigns.insert(KVPair(myString[i-2], myString[i-1])); //[parse_uuid(myString.at(i-2))] = parse_uuid(myString.at(i-1));
+        campaigns.insert(KVPair(myString[i - 2], myString[i - 1]));
+        //[parse_uuid(myString.at(i-2))] = parse_uuid(myString.at(i-1));
     }
     myString.clear();
 
     UnboundedInMem<Event, BundleT> yahooSource(
-    //YahooBenchmarkSource yahooSource(
-            "[yahooSource]",
-            config.input_file.c_str(),
-            config.records_per_interval , /* records per wm interval */
-            config.target_tput,	      /* target tput (rec/sec) */
-            config.record_size,
-            0 //XXX session_gap_ms = ????
+        // YahooBenchmarkSource yahooSource(
+        "[yahooSource]",
+        config.input_file.c_str(),
+        config.records_per_interval, /* records per wm interval */
+        config.target_tput, /* target tput (rec/sec) */
+        config.record_size,
+        0 //XXX session_gap_ms = ????
     );
 
     // create a new pipeline
-    Pipeline* p = Pipeline::create(NULL);
+    Pipeline *p = Pipeline::create(NULL);
 
     // Source
     PCollection *yahooSource_output = dynamic_cast<PCollection *>(p->apply1(&yahooSource));
@@ -137,14 +124,14 @@ void testYahooBenchmark()
     connect_transform(agg, sink);*/
 
     // With group by
-    YahooMapper<Event, pair<creek::string,long>, BundleT> mapper ("[yahoo-mapper]", campaigns);
-    WinGBK<pair<creek::string, long>, BundleT, WinKeyFragLocal_Std> wgbk ("[wingbk]", seconds(10));
-    WinKeyReducer<pair<creek::string,long>,  // pair in
-            WinKeyFragLocal_Std, WinKeyFrag_Std, // kv d/s
-            pair<creek::string,long>,  // pair out
-            WindowsBundle // bundle out
+    YahooMapper<Event, pair<creek::string, long>, BundleT> mapper("[yahoo-mapper]", campaigns);
+    WinGBK<pair<creek::string, long>, BundleT, WinKeyFragLocal_Std> wgbk("[wingbk]", seconds(10));
+    WinKeyReducer<pair<creek::string, long>, // pair in
+        WinKeyFragLocal_Std, WinKeyFrag_Std, // kv d/s
+        pair<creek::string, long>, // pair out
+        WindowsBundle // bundle out
     > reducer("[reducer]");
-    WindowsBundleSink<pair<creek::string,long>> sink("sink");
+    WindowsBundleSink<pair<creek::string, long> > sink("sink");
     connect_transform(yahooSource, mapper);
     connect_transform(mapper, wgbk);
     connect_transform(wgbk, reducer);
@@ -157,8 +144,7 @@ void testYahooBenchmark()
 
 //#include <jemalloc/jemalloc.h>
 
-int main(int ac, char *av[])
-{
+int main(int ac, char *av[]) {
     parse_options(ac, av, &config);
 
     //  malloc_stats_print(NULL, NULL, NULL);  // can test jemalloc
@@ -167,4 +153,3 @@ int main(int ac, char *av[])
 
     return 0;
 }
-
