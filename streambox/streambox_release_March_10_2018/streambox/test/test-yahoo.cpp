@@ -6,20 +6,14 @@
  * Since the -Evaluator.h file already included the corresponding
  * transform header.
  */
-//#include "Unbounded.h"
 #include "Source/UnboundedInMemEvaluator.h"
-//#include "WordCountMapper.h"
 #include "Mapper/WordCountMapperEvaluator.h"
-//#include "WinGBK.h"
 #include "Win/WinGBKEvaluator.h"
-//#include "WindowKeyedReducer.h"
-//#include "WindowKeyedReducerEvaluator.h"
 #include "WinKeyReducer/WinKeyReducerEval.h"
 #include "Sink/WindowsBundleSinkEvaluator.h"
 #include "Select/SimpleSelect.h"
 #include "Source/YahooBenchmarkSource.h"
 #include "Win/FixedWindowIntoEvaluator.h"
-//#include "WindowedSumEvaluator.h"
 #include "WinSum/WinSum_mergeset.h"
 #include "Sink/WindowsBundleSinkEvaluator.h"
 #include "test-common.h"
@@ -37,7 +31,7 @@
  *       WordCountMapper
  *            | BundleT<KVPair<string,long>>
  *            V
- *          WinGBK
+ *       WinGBK
  *            | WindowsKeyedBundle<KVPair<string,long>>
  *            V
  *      WindowKeyedReducer (stateful)
@@ -68,13 +62,13 @@ pipeline_config config = {
 };
 #else
 pipeline_config config = {
-        .records_per_interval = (1 * 128/2 * 10 * 1000),
-        .target_tput = (2 * 1 * 135 * 10 * 1000),
+        .records_per_interval = (64 * 10 * 1000),
+        .target_tput = (2700 * 1000),
         .record_size = 136,
-        .input_file = 
+        .input_file =
 "/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt"
         ,
-        .cores = 8,//std::thread::hardware_concurrency() - 1,
+        .cores = 16,//std::thread::hardware_concurrency() - 1,
 };
 #endif
 
@@ -85,14 +79,11 @@ void testYahooBenchmark()
 
     using namespace boost::uuids;
     using KVPair = pair<creek::string, creek::string>;
-    //using Set = tbb::concurrent_unordered_set<KVPair>;
     using Set = creek_set_array::SetArray;
     using Vector = creek::concurrent_vector<creek::string>;
 
     unordered_map<std::string, std::string> campaigns;
     campaigns.reserve(1000);
-    //boost::uuids::random_generator random_uuid;
-    //boost::uuids::string_generator parse_uuid;
 
     std::ifstream infile(
 "/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/CampAds.txt"

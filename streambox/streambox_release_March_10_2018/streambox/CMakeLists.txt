@@ -10,12 +10,12 @@ include_directories(
         ./
         ../CTPL
         ../Kaskade
-	../tbb/include
+        ../tbb/include
         /usr/local/include
 )
 
 # in case of use on arm cross toolchain
-if(CMAKE_ENV STREQUAL "arm")
+if (CMAKE_ENV STREQUAL "arm")
     # add required libraries
     # all libraries are in /shared/hikey
     include_directories(
@@ -42,13 +42,13 @@ if(CMAKE_ENV STREQUAL "arm")
     SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
     SET(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
-    SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations" ) # remove warning of auto_ptr
-#elseif(CMAKE_ENV STREQUAL "x86")
-else()    # default: x86
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations") # remove warning of auto_ptr
+    #elseif(CMAKE_ENV STREQUAL "x86")
+else ()    # default: x86
     #SET( CMAKE_CXX_COMPILER "clang++" )  # has some issues with template template class...
-    SET( CMAKE_CXX_COMPILER "g++" )
+    SET(CMAKE_CXX_COMPILER "g++")
     #SET( CMAKE_CXX_COMPILER "icc" )
-endif(CMAKE_ENV STREQUAL "arm")
+endif (CMAKE_ENV STREQUAL "arm")
 
 # CLion needs to know all the headers.
 # produced by ``ls -1"
@@ -159,7 +159,7 @@ SET(HEADERS
         linux-sizes.h
         log.h
         measure.h
-        )
+)
 
 # common source shared
 SET(SRC_WINSUM
@@ -168,7 +168,7 @@ SET(SRC_WINSUM
         WinSum/WinSum_mergeset.cpp
         WinSum/WinSum_mergevector.cpp
         WinSum/WinSum_addlong_tvpair.cpp
-        )
+)
 
 SET(SRC_WKR
         WinKeyReducer/WinKeyReducer.cpp
@@ -178,7 +178,7 @@ SET(SRC_WKR
         WinKeyReducer/WinKeyReducerEval-wc-winbundle.cpp
         WinKeyReducer/WinKeyReducerEval-wc-recordbundle.cpp
         WinKeyReducer/WinKeyReducerEval-netmon.cpp
-        )
+)
 
 SET(SOURCES
         ${HEADERS}
@@ -205,7 +205,7 @@ SET(SOURCES
         Source/Unbounded_Join.cpp
         ${SRC_WINSUM}
         ${SRC_WKR}
-        )
+)
 
 # -- apply to all configurations
 #SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 -g -fcilkplus -Wall" )
@@ -244,13 +244,14 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
 add_library(creek STATIC
         ${SOURCES}
-        )
+        Makefile
+)
 
 add_executable(test-grep.bin
         test/test-grep.cpp
         Sink/RecordBundleSink.cpp
         ${SOURCES}
-        )
+)
 
 add_executable(test-join.bin test/test-join.cpp ${SOURCES})
 
@@ -263,7 +264,7 @@ add_executable(test-distinct.bin
         test/test-distinct.cpp
         ${SOURCES}
         Sink/RecordBundleSink.cpp
-        )
+)
 
 add_executable(test-join-2.bin test/test-join-2.cpp ${SOURCES})
 
@@ -293,7 +294,7 @@ add_executable(networklatency.bin
 
 add_executable(test-wc.bin
         test/test-wc.cpp
-        )
+)
 
 add_executable(test-yahoo.bin
         test/test-yahoo.cpp
@@ -301,7 +302,8 @@ add_executable(test-yahoo.bin
         Mapper/YahooMapper.cpp
         Sink/RecordBundleSink.cpp
         Sink/WindowsBundleSink.cpp
-        )
+        Makefile
+)
 
 #add_executable(test-wc.bin
 #        test/test-wc.cpp
@@ -366,12 +368,12 @@ add_executable(test-tweet.bin
         test/test-common.cpp
         #WindowKeyedReducerEval-wc.cpp
         #WindowKeyedReducerEval-netmon.cpp
-        )
+)
 
 set_target_properties(test-tweet.bin
         #PROPERTIES COMPILE_FLAGS "-DWORKAROUND_JOIN_JDD=1 -DWORKAROUND_WINKEYREDUCER_RECORDBUNDLE=1"
         PROPERTIES COMPILE_FLAGS "-DWORKAROUND_JOIN_JDD=1"
-        )
+)
 
 #add_executable(test-WordCountMapper.bin test-WordCountMapper.cpp ${SOURCES})
 
@@ -387,14 +389,14 @@ FIND_LIBRARY(tbb NAMES libtbb.so PATHS ../tbb/build/linux_intel64_gcc_cc7_libc2.
 #FIND_LIBRARY(tbb_malloc NAMES libtbbmalloc.so PATHS tbb/lib/intel64/gcc4.7)
 
 # x86 libs
-if(NOT CMAKE_ENV STREQUAL "arm")
-FIND_LIBRARY(folly NAMES libfolly.a PATHS /usr/local/lib)
-FIND_LIBRARY(re2 NAMES libre2.a PATHS /usr/local/lib)
-FIND_LIBRARY(glog NAMES libglog.a PATHS /usr/local/lib)
-FIND_LIBRARY(re2 NAMES libre2.a PATHS /usr/local/lib)
-FIND_LIBRARY(jemalloc NAMES libjemalloc.a PATHS /usr/local/lib)
-#FIND_LIBRARY(cityhash NAMES libcityhash.a PATHS /ssd/local/lib)
-endif()
+if (NOT CMAKE_ENV STREQUAL "arm")
+    FIND_LIBRARY(folly NAMES libfolly.a PATHS /usr/local/lib)
+    FIND_LIBRARY(re2 NAMES libre2.a PATHS /usr/local/lib)
+    FIND_LIBRARY(glog NAMES libglog.a PATHS /usr/local/lib)
+    FIND_LIBRARY(re2 NAMES libre2.a PATHS /usr/local/lib)
+    FIND_LIBRARY(jemalloc NAMES libjemalloc.a PATHS /usr/local/lib)
+    #FIND_LIBRARY(cityhash NAMES libcityhash.a PATHS /ssd/local/lib)
+endif ()
 
 #TARGET_LINK_LIBRARIES(CreateTest.bin boost_date_time boost_system boost_thread numa ${tbb})
 #TARGET_LINK_LIBRARIES(test-join.bin boost_date_time boost_system boost_thread numa ${tbb})
@@ -408,7 +410,7 @@ TARGET_LINK_LIBRARIES(test-join-2.bin
         ${folly}
         ${re2}
         pcre
-        )
+)
 
 
 TARGET_LINK_LIBRARIES(networklatency.bin
@@ -421,7 +423,7 @@ TARGET_LINK_LIBRARIES(networklatency.bin
         ${folly} ${glog} double-conversion  # needed by atomic hash map
         ${re2}
         pcre
-        )
+)
 
 TARGET_LINK_LIBRARIES(test-join.bin
         boost_date_time
@@ -432,7 +434,7 @@ TARGET_LINK_LIBRARIES(test-join.bin
         ${folly}
         ${re2}
         pcre
-        )
+)
 
 TARGET_LINK_LIBRARIES(test-wc.bin
         creek
@@ -440,14 +442,14 @@ TARGET_LINK_LIBRARIES(test-wc.bin
         boost_system
         boost_thread
         boost_program_options
-        numa 
-	${tbb}
+        numa
+        ${tbb}
         #jemalloc -- do we have this for ARM?
         #  ${tbb_malloc}
         ${folly}
         ${re2}
         pcre
-        )
+)
 
 TARGET_LINK_LIBRARIES(test-yahoo.bin
         creek
@@ -464,7 +466,7 @@ TARGET_LINK_LIBRARIES(test-yahoo.bin
         ${folly}
         ${re2}
         pcre
-        )
+)
 
 TARGET_LINK_LIBRARIES(test-tweet.bin
         boost_date_time
@@ -476,7 +478,7 @@ TARGET_LINK_LIBRARIES(test-tweet.bin
         ${folly}
         ${re2}
         pcre
-        )
+)
 
 TARGET_LINK_LIBRARIES(test-grep.bin
         boost_date_time
@@ -487,7 +489,7 @@ TARGET_LINK_LIBRARIES(test-grep.bin
         ${folly}
         ${re2}
         pcre
-        )
+)
 
 TARGET_LINK_LIBRARIES(test-wingrep.bin
         boost_date_time
@@ -498,7 +500,7 @@ TARGET_LINK_LIBRARIES(test-wingrep.bin
         ${folly}
         ${re2}
         pcre
-        )
+)
 
 TARGET_LINK_LIBRARIES(test-distinct.bin
         boost_date_time
@@ -510,7 +512,7 @@ TARGET_LINK_LIBRARIES(test-distinct.bin
         ${cityhash} # needed by libcuckoo
         ${re2}
         pcre
-        )
+)
 
 #TARGET_LINK_LIBRARIES(test-WordCountMapper.bin
 #	boost_date_time

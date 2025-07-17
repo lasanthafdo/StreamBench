@@ -33,7 +33,7 @@ bool evaluateSingleInput (TransformT* trans,
         cnt += trans->do_map(*it, output_bundle); /* static rocks! */
     }
 
-    cout << "This mapper produced: " << cnt << " \n";
+    // cout << "This mapper produced: " << cnt << " \n";
     trans->record_counter_.fetch_add(cnt, std::memory_order_relaxed);
 
     return true;

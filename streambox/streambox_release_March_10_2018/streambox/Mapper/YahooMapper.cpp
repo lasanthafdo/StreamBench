@@ -7,8 +7,7 @@
 //template <class InputT, class OutputT, class InputBundleT, class OutputBundleT,
 template <class InputT, class OutputT, template<class> class BundleT>
 //void WordCountMapper<InputT, OutputT, InputBundleT, OutputBundleT, mode>::ExecEvaluator(int nodeid,
-void YahooMapper<InputT, OutputT, BundleT>::ExecEvaluator(int nodeid,
-                                                                    EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr)
+void YahooMapper<InputT, OutputT, BundleT>::ExecEvaluator(int nodeid, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr)
 {
 //	using InputBundleT = BundleT<InputT>;
 //	using OutputBundleT = BundleT<OutputT>;
@@ -46,10 +45,10 @@ void YahooMapper<InputT, OutputT, BundleT>::ExecEvaluator(int nodeid,
 template <>
 uint64_t YahooMapper<Event, pair<creek::string, long>, RecordBundle>::do_map(Record<Event> const & in, shared_ptr<RecordBundle<pair<creek::string,long>>> output_bundle)
 {
+    // using KVPair = pair<creek::string, long>;
 
-    using KVPair = pair<creek::string, long>;
-
-    uint64_t i = 0, cnt = 0;
+    // uint64_t i = 0;
+    uint64_t cnt = 0;
 
     if (in.data.num_event_type == 2 ){
         this->itemFromMap = this->campaigns.find(in.data.ad_id);
@@ -67,7 +66,7 @@ uint64_t YahooMapper<Event, pair<creek::string, long>, RecordBundle>::do_map(Rec
 template<>
 uint64_t YahooMapper<Event, creek::string, RecordBundle>::do_map(Record<Event> const & in, shared_ptr<RecordBundle<creek::string>> output_bundle)
 {
-    uint64_t i = 0, cnt = 0, start;
+    // uint64_t i = 0, cnt = 0;
     if (in.data.num_event_type == 2 ){
         this->itemFromMap = this->campaigns.find(in.data.ad_id);
         if(this->itemFromMap != this->campaigns.end()) {
