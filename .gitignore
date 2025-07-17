@@ -4,3 +4,10 @@ tbb/
 tbb
 *_output.txt
 .idea/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+creek.cbp
+*.a
+*.bin
