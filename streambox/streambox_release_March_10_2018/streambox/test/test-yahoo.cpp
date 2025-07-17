@@ -55,7 +55,7 @@ pipeline_config config = {
 #else
 pipeline_config config = {
     .records_per_interval = (64 * 10 * 1000),
-    .target_tput = (2700 * 1000),
+    .target_tput = (5000 * 1000),
     .record_size = 136,
     .input_file =
     "/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt",
@@ -64,8 +64,6 @@ pipeline_config config = {
 #endif
 
 void testYahooBenchmark() {
-    config.cores = 8;
-
     using namespace boost::uuids;
     using KVPair = pair<creek::string, creek::string>;
     using Set = creek_set_array::SetArray;
@@ -125,7 +123,7 @@ void testYahooBenchmark() {
 
     // With group by
     YahooMapper<Event, pair<creek::string, long>, BundleT> mapper("[yahoo-mapper]", campaigns);
-    WinGBK<pair<creek::string, long>, BundleT, WinKeyFragLocal_Std> wgbk("[wingbk]", seconds(10));
+    WinGBK<pair<creek::string, long>, BundleT, WinKeyFragLocal_Std> wgbk("[wingbk]", seconds(1));
     WinKeyReducer<pair<creek::string, long>, // pair in
         WinKeyFragLocal_Std, WinKeyFrag_Std, // kv d/s
         pair<creek::string, long>, // pair out

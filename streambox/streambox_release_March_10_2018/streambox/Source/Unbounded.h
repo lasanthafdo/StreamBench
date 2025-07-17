@@ -1031,7 +1031,7 @@ public:
     const char *input_fname;
 
     /* these are event time, irrelevant to the engine processing timing */
-    const int punc_interval_ms = 10000;
+    const int punc_interval_ms = 1000;
     const unsigned long records_per_interval; /* # records between two puncs */
     uint64_t string_len; /* the length covered by each record */
     const int session_gap_ms; /* gap between "bursts" of bundles. for testing session windows */

@@ -1022,25 +1022,6 @@ public:
     static void SeedSourceWatermarkBlocking(EvaluationBundleContext *c,
                                             shared_ptr<vector<TicketT> > tickets,
                                             const ptime wm) {
-#if 0 /* we shouldn't block threads from the threadpool */
-        NumaThreadPool & pool = NumaThreadPool::instance();
-
-		/* XXX should specify node to run */
-		pool.runOnNode(0, Task([=]{
-					for (auto && t : *tickets)
-					t.wait();
-					c->SeedWatermark(ts);
-					}));
-#endif
-
-#if 0 /* not working since std::async is basically sync */
-        std::async (std::launch::async, [=]{
-				for (auto && t : *tickets)
-				t.wait();
-				c->SeedWatermark(ts); /* XXX we'd better create async tasks for watermark */
-				});
-#endif
-
         for (auto &&t: *tickets)
             t.wait();
 
@@ -1053,228 +1034,11 @@ public:
                                               shared_ptr<vector<TicketT> > tickets,
                                               const ptime ts) {
         //  	EE("watermark: %s...", to_simple_string(ts).c_str());
-
         //  	EE("%s: wm: %s...",
         //  			to_simple_string(boost::posix_time::microsec_clock::local_time()).c_str(),
         //  			to_simple_string(ts).c_str());
-
         SeedSourceWatermarkBlocking(c, tickets, ts);
     }
-
-    /*
-     * issue a wave of multi bundles, advance the watermark, then issue again.
-     * (current implementation: one wave carries whole content of one buffer)
-     *
-     * records of the same bundle have the same values of timestamps
-     * the timestamp increases between consecutive bundles.
-     *
-     * NB: this function should not be executed by threadpool worker as it will
-     * block.
-     */
-#if 0
-    void evaluate(TransformT* t, EvaluationBundleContext *c,
-			shared_ptr<BundleBase> bundle_ptr = nullptr) override {
-
-		boost::posix_time::time_duration delta = milliseconds(t->interval_ms);
-
-#if 1
-		/* support at most 2 output streams */
-		auto out = t->getFirstOutput();
-		//    auto out2 = t->getFirstOutput();
-		assert(out);
-
-#ifdef USE_NUMA_TP
-		NumaThreadPool& pool = NumaThreadPool::instance();
-#endif
-
-		/* # of bundles between two puncs */
-		const int bundle_count = numa_num_configured_cpus(); /* # cores */
-		//    const int bundle_count = 2;	// debugging
-
-		const uint64_t range_per_bundle = t->buffer_size / bundle_count;
-		const int records_per_bundle = range_per_bundle / record_size + 1;
-
-		EE(" ---- punc internal is %lu sec (ev time) --- ",
-				delta.total_milliseconds() * bundle_count / 1000 );
-
-		bool is_active = false;
-
-		/* an infi loop that emit bundles to all NUMA nodes periodically.
-		 * spawn downstream eval to consume the bundles.
-		 * NB: we can only sleep in the main thread (which is not
-		 * managed by the NUMA thread pool).
-		 */
-
-		while (true) {
-#if 1
-			BaseT::pause_between_waves();
-
-			if (BaseT::is_pressure_high(c)) {
-				static boost::posix_time::ptime last_tick;
-				static int count = 0, interval_sec = 3;
-				boost::posix_time::ptime this_tick = \
-								     boost::posix_time::second_clock::local_time();
-				boost::posix_time::time_duration diff = this_tick - last_tick;
-
-				if (diff.total_seconds() > interval_sec) {
-					I("downstream pressure too high. backoff (%d msgs in %d sec)",
-							count, interval_sec);
-					last_tick = this_tick;
-					count = 0;
-					//      		dump_all_containers(c); // debugging
-				} else
-					count ++;
-
-				if (is_active)
-					EE("XXXXX source stops ");
-				is_active = false;
-				continue;
-			} else {
-				if (!is_active)
-					EE("XXXXX source starts ");
-				is_active = true;
-			}
-#endif
-
-			/*
-			 * each bundle has a fixed number of records of string_range (the range
-			 * is also fixed); each bundle is to be consumed by a new task.
-			 *
-			 * create bundles_per_node * #nodes tasks in parallel.
-			 *
-			 * will NOT block
-			 */
-
-			uint64_t offset = 0;
-			const int num_nodes = numa_max_node() + 1;
-
-			for (int i = 0; i < bundle_count; i++) {
-				/* send bundles to numa nodes in a round-robin fashion */
-				int nodeid = (i % num_nodes);
-				/* create a multi-record bundle */
-
-				if (offset >= t->buffer_size)
-					offset = 0;
-
-				const char * bundle_start = \
-							    t->buffers[nodeid] + range_per_bundle * i;
-
-				shared_ptr<BundleT<T>>
-					bundle(make_shared<BundleT<T>>(
-								records_per_bundle,  /* reserved capacity */
-								nodeid));
-
-#ifdef MEASURE_LATENCY
-				bundle->mark("creation at source");
-#endif
-				assert(bundle);
-
-				string_range range;
-				range.len = record_size;
-
-				uint64_t offset = 0;
-				/* limitation: XXX
-				 * 1. we may miss the last @record_size length in the bundle range
-				 * 2. we don't split records at the word boundary.
-				 * 3. we don't force each string_range's later char to be \0
-				 */
-
-				VV("pack records in bundle ts %s:",
-						to_simple_string(current_ts + delta * i).c_str());
-
-				while (offset + record_size < range_per_bundle) {
-					range.data = bundle_start + offset;
-
-#if 0
-					char buf[20];
-					//					  	snprintf(buf, 10, "%s", range.data); // very slow
-					memcpy(buf, range.data, 15);
-					buf[15] = '\0';
-					W("string_range XXX %lx (%s...", (unsigned long)range.data, buf);
-#endif
-					/* same ts for all records in the bundle */
-					bundle->add_record(Record<T>(range, BaseT::current_ts + delta * i));
-					offset += record_size;
-				}
-
-				out->consumer->depositOneBundle(bundle, nodeid);
-
-				c->SpawnConsumer();
-#if 0
-				/*----------for measuring latency----------*/
-				if(first){
-					start = boost::posix_time::second_clock::local_time();
-					std::cout << "start time: " << boost::posix_time::to_simple_string(start) << std::endl;
-					first = 0;
-				}
-				/*-----------------------------------------*/
-#endif
-			} // done sending @bundle_count bundles.
-
-			BaseT::current_ts += delta * bundle_count;
-			BaseT::current_ts += milliseconds(t->session_gap_ms);
-
-			/* Make sure all data have left the source before
-			   advancing the watermark. otherwise, downstream transforms may see
-			   watermark advance before they see the (old) records.
-
-			   While we hold the watermark, however, we don't have to hold records
-			   that arrive after the watermark. */
-
-			/*
-			 * update source watermark immediately, but propagate the watermark
-			 * to downstream asynchronously.
-			 */
-			c->UpdateSourceWatermark(BaseT::current_ts);
-
-			/* Useful before the sink sees the 1st watermark */
-			if (c->GetTargetWm() == max_date_time) { /* unassigned */
-				c->SetTargetWm(BaseT::current_ts);
-			}
-
-			/* where we process wm.
-			 * we spread wm among numa nodes
-			 * NB this->_node may be -1 */
-			static int wm_node = 0;
-			out->consumer->depositOnePunc(make_shared<Punc>(BaseT::current_ts, wm_node),
-					wm_node);
-			c->SpawnConsumer();
-			if (++wm_node == numa_max_node())
-				wm_node = 0;
-
-			t->byte_counter_.fetch_add(bundle_count * records_per_bundle * record_size,
-					std::memory_order_relaxed);
-			t->record_counter_.fetch_add(bundle_count * records_per_bundle,
-					std::memory_order_relaxed);
-
-#if 0
-			auto b = report_progress(bundle_count * records_per_bundle * record_size,
-					bundle_count * records_per_bundle);
-
-			/* also report about thread pool */
-			if (b) {
-				long total_pending = 0;
-				for (auto && v : c->_transforms) {
-					/* just peek. we don't grab lock */
-					long pending = v->getNumBundles();
-					total_pending += pending;
-				}
-
-				EE("pending bundles %ld, "
-						"processed num_bundles_beforewm %ld num_bundles_afterwm %ld",
-						total_pending,
-						c->num_bundles_beforewm.load(std::memory_order_relaxed),
-						c->num_bundles_afterwm.load(std::memory_order_relaxed));
-
-				/* debugging */
-				//      	 dump_all_containers(c);
-			}
-#endif
-
-		}   // while
-#endif
-	}
-#endif
 
 private:
     /* moved from WindowKeyedReducerEval (XXX merge later)
@@ -1311,8 +1075,6 @@ private:
     }
 
 public:
-#include "UnboundedInMemEvaluator_2out.h"
-
     void evaluate(TransformT *t, EvaluationBundleContext *c,
                   shared_ptr<BundleBase> bundle_ptr = nullptr) override {
         auto out = t->getFirstOutput();
@@ -1325,18 +1087,14 @@ public:
 
         boost::posix_time::time_duration punc_interval =
                 milliseconds(t->punc_interval_ms);
-
         boost::posix_time::time_duration delta =
                 milliseconds(t->punc_interval_ms) / bundle_per_interval;
 
-        //    const int bundle_count = 2;	// debugging
         const uint64_t records_per_bundle
                 = (t->records_per_interval / bundle_per_interval) * CONFIG_SOURCE_THREADS;
 
         EE(" ---- punc internal is %d sec (ev time) --- ",
            t->punc_interval_ms / 1000);
-
-        //			bool is_active = false;
 
         /* an infi loop that emit bundles to all NUMA nodes periodically.
          * spawn downstream eval to consume the bundles.
@@ -1345,7 +1103,7 @@ public:
          */
 
         const int num_nodes = numa_max_node() + 1;
-        //           uint64_t offsets[8] = {0}; /* in each NUMA record buffer */
+        // uint64_t offsets[8] = {0}; /* in each NUMA record buffer */
 
         /* the global offset into each NUMA buffer to avoid repeated content.
          * (since each buffer has same content)
@@ -1354,74 +1112,37 @@ public:
         uint64_t us_per_iteration = 1e6 * t->records_per_interval / (t->target_tput / CONFIG_SOURCE_THREADS);
         /* the target us */
 
-        //		 EE("XXX us_per_iteration %lu", us_per_iteration);
+        // EE("XXX us_per_iteration %lu", us_per_iteration);
 
         /* source is also MT. 3 seems good for win-grep */
         const int total_tasks = CONFIG_SOURCE_THREADS;
-
         const int iter = 1; //t->punc_interval_ms/1000;
 
         vector<std::future<void> > futures;
-
-
-        printf("Starting adding timestamps to records... \n");
-
-
+        // printf("Starting adding timestamps to records... \n");
         while (true) {
-#if 0
-            BaseT::pause_between_waves();
-
-			if (BaseT::is_pressure_high(c)) {
-				static boost::posix_time::ptime last_tick;
-				static int count = 0, interval_sec = 3;
-				boost::posix_time::ptime this_tick = \
-								     boost::posix_time::second_clock::local_time();
-				boost::posix_time::time_duration diff = this_tick - last_tick;
-
-				if (diff.total_seconds() > interval_sec) {
-					I("downstream pressure too high. backoff (%d msgs in %d sec)",
-							count, interval_sec);
-					last_tick = this_tick;
-					count = 0;
-					//      		dump_all_containers(c); // debugging
-				} else
-					count ++;
-
-				if (is_active)
-					EE("XXXXX source stops ");
-				is_active = false;
-				continue;
-			} else {
-				if (!is_active)
-					EE("XXXXX source starts ");
-				is_active = true;
-			}
-#endif
-
             /*
              * each bundle is to be consumed by a new task.
-             *
              * will NOT block
              */
 
             for (int it = 0; it < iter; it++) {
                 boost::posix_time::ptime start_tick = boost::posix_time::microsec_clock::local_time();
-                printf("This is the start_tick: %s outside the for loops. \n", to_simple_string(start_tick).c_str());
+                // printf("This is the start_tick: %s outside the for loops. \n", to_simple_string(start_tick).c_str());
 
                 for (int task_id = 0; task_id < total_tasks; task_id++) {
                     /* each worker works on a range of bundles in the epoch */
-                    //			auto source_task_lambda = [t, &total_tasks, &bundle_per_internval, task_id](int id)
+                    // auto source_task_lambda = [t, &total_tasks, &bundle_per_internval, task_id](int id)
                     auto source_task_lambda = [t, &total_tasks, &bundle_per_interval,
                                 this, &delta, &out, &c, &records_per_bundle, &num_nodes,
                                 task_id, offset](int id) {
-                        cpu_set_t cpuset;
-                        CPU_ZERO(&cpuset);
-                        int cpu_core = (2 * task_id + 1) % 24;
-                        CPU_SET((cpu_core + 1) % 24, &cpuset);
-                        pthread_t current_thread = pthread_self();
-                        std::cout << "Generator Thread #" << task_id << ": on CPU " << sched_getcpu() << "\n";
-
-                        pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+                        // cpu_set_t cpuset;
+                        // CPU_ZERO(&cpuset);
+                        // int cpu_core = (2 * task_id + 1) % 24;
+                        // CPU_SET((cpu_core + 1) % 24, &cpuset);
+                        // pthread_t current_thread = pthread_self();
+                        // std::cout << "Generator Thread #" << task_id << ": on CPU " << sched_getcpu() << "\n";
+                        // pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
 
                         auto range = get_range(bundle_per_interval, total_tasks, task_id);
                         auto local_offset = (offset + records_per_bundle * range.first) % t->buffer_size_records;
@@ -1436,14 +1157,12 @@ public:
 
                             /* assemble a bundle by drawing records from the corresponding
                              * NUMA record buffer. */
-
                             shared_ptr<BundleT<T> >
                                     bundle(make_shared<BundleT<T> >(
                                         records_per_bundle, /* reserved capacity */
                                         nodeid));
 
                             xzl_assert(bundle);
-
                             /* limitation: XXX
                              * 1. we may miss the last @record_size length in the bundle range
                              * 2. we don't split records at the word boundary.
@@ -1461,92 +1180,6 @@ public:
                                         = BaseT::current_ts + delta * i;
 
                                 bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                /*bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                local_offset++;
-                                if (local_offset == t->buffer_size_records)
-                                    local_offset = 0;
-                                t->record_buffers[nodeid][local_offset].ts
-                                        = BaseT::current_ts + delta * i;
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                local_offset++;
-                                if (local_offset == t->buffer_size_records)
-                                    local_offset = 0;
-                                t->record_buffers[nodeid][local_offset].ts
-                                        = BaseT::current_ts + delta * i;
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                local_offset++;
-                                if (local_offset == t->buffer_size_records)
-                                    local_offset = 0;
-                                t->record_buffers[nodeid][local_offset].ts
-                                        = BaseT::current_ts + delta * i;
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);
-                                bundle->add_record(t->record_buffers[nodeid][local_offset]);*/
                             }
 
                             out->consumer->depositOneBundle(bundle, nodeid);
@@ -1574,47 +1207,6 @@ public:
                 offset += records_per_bundle * bundle_per_interval;
                 offset %= t->buffer_size_records;
 
-#if 0 /* single thread */
-                for (unsigned int i = 0; i < bundle_per_interval; i++) {
-                    /* construct the bundles by reading NUMA buffers round-robin */
-                    int nodeid = (i % num_nodes);
-                    //          	 auto & offset = offsets[nodeid];
-
-                    /* assemble a bundle by drawing records from the corresponding
-                     * NUMA record buffer. */
-
-                    shared_ptr<BundleT<T>>
-                        bundle(make_shared<BundleT<T>>(
-                                    records_per_bundle,  /* reserved capacity */
-                                    nodeid));
-
-                    xzl_assert(bundle);
-
-                    /* limitation: XXX
-                     * 1. we may miss the last @record_size length in the bundle range
-                     * 2. we don't split records at the word boundary.
-                     * 3. we don't force each string_range's later char to be \0
-                     */
-
-                    VV("pack records in bundle ts %s:",
-                            to_simple_string(current_ts + delta * i).c_str());
-
-                    for (unsigned int j = 0; j < records_per_bundle; j++, offset++) {
-                        if (offset == t->buffer_size_records)
-                            offset = 0; /* wrap around */
-                        /* rewrite the record ts */
-                        t->record_buffers[nodeid][offset].ts
-                            = BaseT::current_ts + delta * i;
-                        /* same ts for all records in the bundle */
-                        bundle->add_record(t->record_buffers[nodeid][offset]);
-                    }
-
-                    out->consumer->depositOneBundle(bundle, nodeid);
-                    c->SpawnConsumer();
-                } // done sending @bundle_count bundles.
-#endif
-
-
                 t->byte_counter_.fetch_add(t->records_per_interval * t->string_len,
                                            std::memory_order_relaxed);
                 t->record_counter_.fetch_add(t->records_per_interval,
@@ -1624,17 +1216,16 @@ public:
                 auto elapsed_us = (end_tick - start_tick).total_microseconds();
 
 
-                cout << "End tick is: " << to_simple_string(end_tick).c_str() << "\n";
-
-                cout << "elapsed_us is: " << elapsed_us << "\n";
-                cout << "us per iteration: " << us_per_iteration << "\n";
+                // cout << "End tick is: " << to_simple_string(end_tick).c_str() << "\n";
+                // cout << "elapsed_us is: " << elapsed_us << "\n";
+                // cout << "us per iteration: " << us_per_iteration << "\n";
 
                 xzl_assert(elapsed_us > 0);
-                if ((unsigned long) elapsed_us > us_per_iteration)
-                    EE("warning: source runs at full speed.");
-                else {
+                if ((unsigned long) elapsed_us <= us_per_iteration) {
                     usleep(us_per_iteration - elapsed_us);
-                    EE("source pauses for %lu us", us_per_iteration - elapsed_us);
+                    // EE("source pauses for %lu us", us_per_iteration - elapsed_us);
+                } else {
+                    // EE("warning: source runs at full speed.");
                 }
             }
             BaseT::current_ts += punc_interval;
