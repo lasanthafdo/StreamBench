@@ -10,7 +10,6 @@
 #include "Win/WinGBKEvaluator.h"
 #include "WinKeyReducer/WinKeyReducerEval.h"
 #include "Sink/WindowsBundleSinkEvaluator.h"
-#include "Source/YahooBenchmarkSource.h"
 #include "test-common.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -55,21 +54,21 @@ pipeline_config config = {
 #else
 pipeline_config config = {
     .records_per_interval = (1000 * 1000),
-    .target_tput = (12 * 1000 * 1000),
-    .record_size = 136,
+    .target_tput = (CONFIG_SOURCE_THREADS * 12 * 1000 * 1000),
+    .record_size = 48,
     .input_file =
     "/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt",
-    .cores = 22, //std::thread::hardware_concurrency() - 1,
+    .cores = std::thread::hardware_concurrency() - 1,
 };
 #endif
 
 void testYahooBenchmark() {
     using namespace boost::uuids;
-    using KVPair = pair<creek::string, creek::string>;
+    using KVPair = pair<uint64_t, creek::string>;
     using Set = creek_set_array::SetArray;
     using Vector = creek::concurrent_vector<creek::string>;
 
-    unordered_map<std::string, std::string> campaigns;
+    unordered_map<uint64_t, creek::string> campaigns;
     campaigns.reserve(1000);
 
     std::ifstream infile(
@@ -77,6 +76,7 @@ void testYahooBenchmark() {
     );
     std::string line;
     vector<string> myString;
+    std::hash<std::string> str_hasher;
     int i = 0;
     while (std::getline(infile, line)) {
         istringstream ss(line);
@@ -86,12 +86,12 @@ void testYahooBenchmark() {
             i++;
         }
         //campaigns.insert(std::pair<uuid, uuid>(parse_uuid(myString[i-2]), parse_uuid(myString[i-1]))); //[parse_uuid(myString.at(i-2))] = parse_uuid(myString.at(i-1));
-        campaigns.insert(KVPair(myString[i - 2], myString[i - 1]));
+        campaigns.insert(KVPair(str_hasher(myString[i - 2]), myString[i - 1]));
         //[parse_uuid(myString.at(i-2))] = parse_uuid(myString.at(i-1));
     }
     myString.clear();
 
-    UnboundedInMem<Event, BundleT> yahooSource(
+    UnboundedInMem<YSBEvent, BundleT> yahooSource(
         // YahooBenchmarkSource yahooSource(
         "[yahooSource]",
         config.input_file.c_str(),
@@ -122,7 +122,7 @@ void testYahooBenchmark() {
     connect_transform(agg, sink);*/
 
     // With group by
-    YahooMapper<Event, pair<creek::string, long>, BundleT> mapper("[yahoo-mapper]", campaigns);
+    YahooMapper<YSBEvent, pair<creek::string, long>, BundleT> mapper("[yahoo-mapper]", campaigns);
     WinGBK<pair<creek::string, long>, BundleT, WinKeyFragLocal_Std> wgbk("[wingbk]", seconds(10));
     WinKeyReducer<pair<creek::string, long>, // pair in
         WinKeyFragLocal_Std, WinKeyFrag_Std, // kv d/s

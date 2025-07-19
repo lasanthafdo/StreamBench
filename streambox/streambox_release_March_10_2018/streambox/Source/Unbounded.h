@@ -1024,8 +1024,8 @@ private:
 
 /* For the Yahoo! benchmark */
 template<template<class> class BundleT> /* can't use default argument = RecordBitmapBundle<string_range> */
-class UnboundedInMem<Event, BundleT> : public PTransform {
-    using T = Event;
+class UnboundedInMem<YSBEvent, BundleT> : public PTransform {
+    using T = YSBEvent;
 
 public:
     const char *input_fname;
@@ -1045,7 +1045,7 @@ public:
     const int num_outputs;
 
 private:
-    vector<Event *> buffers; /* buffers, one for each NUMA node */
+    vector<YSBEvent *> buffers; /* buffers, one for each NUMA node */
     uint64_t buffer_size = 0;
 
 public:
@@ -1095,8 +1095,9 @@ public:
                target_tput / 1000, string_len);
 
         /* get per-node buffers and fill the buffers with the file contents */
+        std::hash<std::string> str_hasher;
         for (int i = 0; i < num_nodes; i++) {
-            struct Event *p = (struct Event *) numa_alloc_onnode(buffer_size, i);
+            struct YSBEvent *p = (struct YSBEvent *) numa_alloc_onnode(buffer_size, i);
             assert(p);
 
             std::ifstream infile(input_fname); //("/home/george/clion-2017.3.3/clionProjects/YahooBenchmark/Data.txt");
@@ -1118,17 +1119,21 @@ public:
                     j++;
                 }
 
-                //time_t time = std::stol(myString[i-7]);
-                //time_t now = time(0);
-                //auto timestamp = from_time_t(now);
-                time_t t = std::time(0);
-                long timestamp = static_cast<long int>(t);
-                auto user_id = myString[j - 6];
-                auto page_id = myString[j - 5];
-                auto ad_id = myString[j - 4];
-                auto ad_type = myString[j - 3];
-                //auto event_type = myString[i-2];
-                auto num_event_type = (myString[j - 2] == "view") ? 2 : 0;
+                // No need to set timestamp since we set it when injecting.
+                auto user_id = str_hasher(myString[j - 6]);
+                auto page_id = str_hasher(myString[j - 5]);
+                auto ad_id = str_hasher(myString[j - 4]);
+                auto ad_type_str = myString[j - 3];
+                auto ad_type = ad_type_str == "banner"
+                                   ? 0
+                                   : ad_type_str == "modal"
+                                         ? 1
+                                         : ad_type_str == "sponsored-search"
+                                               ? 2
+                                               : ad_type_str == "mail"
+                                                     ? 3
+                                                     : 4;
+                auto num_event_type = (myString[j - 2] == "view") ? 2 : (myString[j - 2] == "click") ? 1 : 0;
                 auto ip = std::stoi(myString[j - 1]);
 
                 //p[cnt].timeStamp = timestamp;
@@ -1139,10 +1144,11 @@ public:
                 p[cnt].num_event_type = num_event_type;
                 p[cnt].ip = ip;
 
+
                 cnt++;
 
 
-                show_progress += 136;
+                show_progress += 48;
 
                 if (cnt == buffer_size_records) //131072//163840
                     break;
@@ -1153,8 +1159,8 @@ public:
 
         //file the buffers of records
         for (int i = 0; i < num_nodes; i++) {
-            Record<Event> *record_buffer =
-                    (Record<Event> *) numa_alloc_onnode(sizeof(Record<Event>) * buffer_size_records, i);
+            Record<YSBEvent> *record_buffer =
+                    (Record<YSBEvent> *) numa_alloc_onnode(sizeof(Record<YSBEvent>) * buffer_size_records, i);
             assert(record_buffer);
             for (long j = 0; j < buffer_size_records; j++) {
                 record_buffer[j].data = buffers[i][j];

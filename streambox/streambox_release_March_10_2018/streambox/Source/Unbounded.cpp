@@ -13,9 +13,9 @@ void UnboundedInMem<string_range, BundleT>::ExecEvaluator(int nodeid,
 }
 
 template<template<class> class BundleT>
-void UnboundedInMem<Event, BundleT>::ExecEvaluator(int nodeid, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr) {
+void UnboundedInMem<YSBEvent, BundleT>::ExecEvaluator(int nodeid, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr) {
     /* instantiate an evaluator */
-    UnboundedInMemEvaluator<Event,BundleT> eval(nodeid);
+    UnboundedInMemEvaluator<YSBEvent,BundleT> eval(nodeid);
     eval.evaluate(this, c, bundle_ptr);
 }
 
@@ -48,9 +48,7 @@ void UnboundedInMem<long, RecordBitmapBundle>::ExecEvaluator(int nodeid, Evaluat
 
 //george: for Event
 template
-void UnboundedInMem<Event, RecordBundle>::ExecEvaluator(int nodeid, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr);
+void UnboundedInMem<YSBEvent, RecordBundle>::ExecEvaluator(int nodeid, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr);
 //george: instantiation
 template
-void UnboundedInMem<Event, RecordBitmapBundle>::ExecEvaluator(int nodeid, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr);
-
-
+void UnboundedInMem<YSBEvent, RecordBitmapBundle>::ExecEvaluator(int nodeid, EvaluationBundleContext *c, shared_ptr<BundleBase> bundle_ptr);

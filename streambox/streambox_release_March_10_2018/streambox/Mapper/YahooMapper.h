@@ -19,7 +19,7 @@
         class OutputT,
         template<class> class BundleT >*/
 
-template<class InputT = Event,
+template<class InputT = YSBEvent,
     class OutputT = pair<creek::string, long>,
     template<class> class BundleT = RecordBitmapBundle>
 class YahooMapper : public Mapper<InputT> {
@@ -34,12 +34,12 @@ public:
 
 private:
     //static atomic<unsigned long> record_counter_;
-    unordered_map<creek::string, creek::string> campaigns;
-    std::unordered_map<creek::string, creek::string>::iterator itemFromMap;
+    unordered_map<uint64_t, creek::string> campaigns;
+    std::unordered_map<uint64_t, creek::string>::iterator itemFromMap;
 
 public:
     YahooMapper(string name = "yahoo_mapper",
-                unordered_map<creek::string, creek::string> campaigns = nullptr) : Mapper<InputT>(name) {
+                unordered_map<uint64_t, creek::string> campaigns = nullptr) : Mapper<InputT>(name) {
         this->campaigns = campaigns;
     }
 

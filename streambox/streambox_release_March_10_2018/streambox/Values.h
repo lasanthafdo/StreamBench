@@ -93,7 +93,7 @@ struct bundle_container;
 struct BundleBase {
 
 	//hym: which side this bundle/punc belongs to
-	// 0: default 
+	// 0: default
 	// 1: left, or left_unordered
 	// 2: right, or right_unordered
 	int side_info = 0;
@@ -234,7 +234,7 @@ struct bundle_container {
 
 	public:
 		//hym: some trans need to know where bundles/puncs come from
-		//     left? right? unordered? ordered? 
+		//     left? right? unordered? ordered?
 		atomic<int> side_info;
 		void set_side_info(int i){
 			side_info = i;
@@ -2185,6 +2185,17 @@ struct RecordBitmapBundle : public RecordBundle<T>
 				//boost::asio::ip::address ip;
 				int ip;
 			};
+
+struct YSBEvent {
+	//uint64_t timeStamp;
+	uint64_t user_id;
+	uint64_t page_id;
+	uint64_t ad_id;
+	long ad_type;
+	long num_event_type;
+	long ip;
+};
+
 			/////////////////////////////////////////////////////////
 
 			/* an array of set for fixing the scalability bottleneck in a single set.

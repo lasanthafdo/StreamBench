@@ -43,8 +43,8 @@ void YahooMapper<InputT, OutputT, BundleT>::ExecEvaluator(int nodeid, Evaluation
  */
 
 template<>
-uint64_t YahooMapper<Event, pair<creek::string, long>, RecordBundle>::do_map(
-    Record<Event> const &in, shared_ptr<RecordBundle<pair<creek::string, long> > > output_bundle) {
+uint64_t YahooMapper<YSBEvent, pair<creek::string, long>, RecordBundle>::do_map(
+    Record<YSBEvent> const &in, shared_ptr<RecordBundle<pair<creek::string, long> > > output_bundle) {
     // using KVPair = pair<creek::string, long>;
 
     // uint64_t i = 0;
@@ -66,7 +66,7 @@ uint64_t YahooMapper<Event, pair<creek::string, long>, RecordBundle>::do_map(
 }
 
 template<>
-uint64_t YahooMapper<Event, creek::string, RecordBundle>::do_map(Record<Event> const &in,
+uint64_t YahooMapper<YSBEvent, creek::string, RecordBundle>::do_map(Record<YSBEvent> const &in,
                                                                  shared_ptr<RecordBundle<creek::string> >
                                                                  output_bundle) {
     if (in.data.num_event_type == 2) {
@@ -91,13 +91,13 @@ atomic<unsigned long> YahooMapper<InputT, OutputT, BundleT>::record_counter_(0);
 
 /* using record bundle for input/output */
 template
-void YahooMapper<Event, creek::string,
+void YahooMapper<YSBEvent, creek::string,
     RecordBundle>::ExecEvaluator
 (int nodeid, EvaluationBundleContext *c,
  shared_ptr<BundleBase> bundle = nullptr);
 
 template
-void YahooMapper<Event, pair<creek::string, long>,
+void YahooMapper<YSBEvent, pair<creek::string, long>,
     RecordBundle>::ExecEvaluator
 (int nodeid, EvaluationBundleContext *c,
  shared_ptr<BundleBase> bundle = nullptr);

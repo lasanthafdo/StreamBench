@@ -965,8 +965,8 @@ public:
 /* owned by george */
 /* but modified by Lasantha */
 template<template<class> class BundleT>
-class UnboundedInMemEvaluator<Event, BundleT> : public UnboundedInMemEvaluatorBase<Event, BundleT> {
-    using T = Event;
+class UnboundedInMemEvaluator<YSBEvent, BundleT> : public UnboundedInMemEvaluatorBase<YSBEvent, BundleT> {
+    using T = YSBEvent;
     using TransformT = typename UnboundedInMemEvaluatorBase<T, BundleT>::TransformT;
     using BaseT = UnboundedInMemEvaluatorBase<T, BundleT>;
 
