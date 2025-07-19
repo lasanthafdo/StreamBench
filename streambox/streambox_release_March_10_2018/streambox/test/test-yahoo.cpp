@@ -54,12 +54,12 @@ pipeline_config config = {
 };
 #else
 pipeline_config config = {
-    .records_per_interval = (64 * 10 * 1000),
-    .target_tput = (5000 * 1000),
+    .records_per_interval = (1000 * 1000),
+    .target_tput = (12 * 1000 * 1000),
     .record_size = 136,
     .input_file =
     "/hdd1/enjima/tests/lsds-streambench/StreamBench/streambox/data_test/Data.txt",
-    .cores = 16, //std::thread::hardware_concurrency() - 1,
+    .cores = 22, //std::thread::hardware_concurrency() - 1,
 };
 #endif
 
@@ -135,6 +135,7 @@ void testYahooBenchmark() {
     connect_transform(wgbk, reducer);
     connect_transform(reducer, sink);
 
+    EE("config.cores=%lu", config.cores);
     // Eval the pipeline
     EvaluationBundleContext eval(1, config.cores);
     eval.runSimple(p);

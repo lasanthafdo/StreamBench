@@ -41,7 +41,7 @@ void MyWinKeyReduerEval::ReduceTopKParallel(TransformT *trans,
     atomic<int> flag2(0);
 
     // EE("total_keys %lu", total_keys);
-    EE("will spawn %d tasks for %lu windows, each taking %d keys", total_tasks, winmap.size(), keys_per_task);
+    // EE("will spawn %d tasks for %lu windows, each taking %d keys", total_tasks, winmap.size(), keys_per_task);
 
 #if 0 // dbg  -- examine the data to reduce
 	for (auto & w : winmap) {

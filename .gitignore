@@ -1,6 +1,6 @@
 data_test/
 streambox-last.tar.gz
-tbb/
+tbb/*
 tbb
 *_output.txt
 .idea/
@@ -11,3 +11,5 @@ cmake_install.cmake
 creek.cbp
 *.a
 *.bin
+cmake-build-debug
+cmake-build-release

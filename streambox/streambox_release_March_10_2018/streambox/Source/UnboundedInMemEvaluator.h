@@ -1095,6 +1095,9 @@ public:
 
         EE(" ---- punc internal is %d sec (ev time) --- ",
            t->punc_interval_ms / 1000);
+        EE(" ---- records per interval is %lu --- ", t->records_per_interval);
+        EE(" ---- bundles per interval is %lu --- ", bundle_per_interval);
+        EE(" ---- records per bundle is %lu --- ", records_per_bundle);
 
         /* an infi loop that emit bundles to all NUMA nodes periodically.
          * spawn downstream eval to consume the bundles.
@@ -1111,8 +1114,7 @@ public:
         uint64_t offset = 0;
         uint64_t us_per_iteration = 1e6 * t->records_per_interval / (t->target_tput / CONFIG_SOURCE_THREADS);
         /* the target us */
-
-        // EE("XXX us_per_iteration %lu", us_per_iteration);
+        EE("XXX us_per_iteration %lu", us_per_iteration);
 
         /* source is also MT. 3 seems good for win-grep */
         const int total_tasks = CONFIG_SOURCE_THREADS;
@@ -1127,15 +1129,24 @@ public:
              */
 
             for (int it = 0; it < iter; it++) {
+#ifdef ADDITIONAL_METRICS
+                std::atomic<uint64_t> cnt{0};
+#endif
                 boost::posix_time::ptime start_tick = boost::posix_time::microsec_clock::local_time();
                 // printf("This is the start_tick: %s outside the for loops. \n", to_simple_string(start_tick).c_str());
 
                 for (int task_id = 0; task_id < total_tasks; task_id++) {
                     /* each worker works on a range of bundles in the epoch */
                     // auto source_task_lambda = [t, &total_tasks, &bundle_per_internval, task_id](int id)
+#ifdef ADDITONAL_METRICS
+                	auto source_task_lambda = [t, &total_tasks, &bundle_per_interval,
+								this, &delta, &out, &c, &records_per_bundle, &num_nodes,
+								task_id, offset, &cnt](int id) {
+#else
                     auto source_task_lambda = [t, &total_tasks, &bundle_per_interval,
                                 this, &delta, &out, &c, &records_per_bundle, &num_nodes,
                                 task_id, offset](int id) {
+#endif
                         // cpu_set_t cpuset;
                         // CPU_ZERO(&cpuset);
                         // int cpu_core = (2 * task_id + 1) % 24;
@@ -1178,7 +1189,9 @@ public:
                                 /* rewrite the record ts */
                                 t->record_buffers[nodeid][local_offset].ts
                                         = BaseT::current_ts + delta * i;
-
+#ifdef ADDITIONAL_METRICS
+                            	cnt.fetch_add(1, std::memory_order_relaxed);
+#endif
                                 bundle->add_record(t->record_buffers[nodeid][local_offset]);
                             }
 
@@ -1206,10 +1219,13 @@ public:
                 /* advance the global record offset */
                 offset += records_per_bundle * bundle_per_interval;
                 offset %= t->buffer_size_records;
-
-                t->byte_counter_.fetch_add(t->records_per_interval * t->string_len,
+#ifdef ADDITIONAL_METRICS
+                EE(" ---- records pushed out in interval is %lu --- ",
+                   cnt.load(std::memory_order_relaxed));
+#endif
+                t->byte_counter_.fetch_add(t->records_per_interval * CONFIG_SOURCE_THREADS * t->string_len,
                                            std::memory_order_relaxed);
-                t->record_counter_.fetch_add(t->records_per_interval,
+                t->record_counter_.fetch_add(t->records_per_interval * CONFIG_SOURCE_THREADS,
                                              std::memory_order_relaxed);
 
                 boost::posix_time::ptime end_tick = boost::posix_time::microsec_clock::local_time();
