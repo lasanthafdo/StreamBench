@@ -238,13 +238,13 @@ class EvaluationBundleContext {
 			bool isPop;
 			bool has_work;
 
-			cpu_set_t cpuset;
-			CPU_ZERO(&cpuset);
-			int cpu_core = (2 * id) %24;
-			CPU_SET(cpu_core + 1, &cpuset);
-			pthread_t current_thread = pthread_self();
-			pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
-            std::cout << "Worker Thread #" << id << ": on CPU " << sched_getcpu() << "\n";
+			// cpu_set_t cpuset;
+			// CPU_ZERO(&cpuset);
+			// int cpu_core = (2 * id) %24;
+			// CPU_SET(cpu_core + 1, &cpuset);
+			// pthread_t current_thread = pthread_self();
+			// pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+			// std::cout << "Worker Thread #" << id << ": on CPU " << sched_getcpu() << "\n";
 
 
 			while (true) {

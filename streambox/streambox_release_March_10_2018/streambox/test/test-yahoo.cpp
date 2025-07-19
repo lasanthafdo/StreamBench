@@ -123,7 +123,7 @@ void testYahooBenchmark() {
 
     // With group by
     YahooMapper<Event, pair<creek::string, long>, BundleT> mapper("[yahoo-mapper]", campaigns);
-    WinGBK<pair<creek::string, long>, BundleT, WinKeyFragLocal_Std> wgbk("[wingbk]", seconds(1));
+    WinGBK<pair<creek::string, long>, BundleT, WinKeyFragLocal_Std> wgbk("[wingbk]", seconds(10));
     WinKeyReducer<pair<creek::string, long>, // pair in
         WinKeyFragLocal_Std, WinKeyFrag_Std, // kv d/s
         pair<creek::string, long>, // pair out
